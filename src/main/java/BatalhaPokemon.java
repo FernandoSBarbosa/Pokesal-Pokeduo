@@ -99,7 +99,7 @@ public class BatalhaPokemon {
                     else if (item == 2) t2.usarItem(Item.SUPER_POTION);
                     else if (item == 3) t2.usarItem(Item.ANTIDOTO);
                     t2UsouItem = true;
-                    System.out.println(t2.getNome() + " usou um item!"); // Corrigido de t1 para t2
+                    System.out.println(t2.getNome() + " usou um item!");
                 } else {
                     System.out.println("Você já usou seus itens! Vai atacar.");
                 }
