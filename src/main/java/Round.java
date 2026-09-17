@@ -16,7 +16,11 @@ public class Round {
     }
     public double calcularDano(Pokemon p1, Pokemon p2) {
         double multElemental = p1.getTipo().multiplicadorContra(p2.getTipo());
-        return ((double) p1.getAtk() / p2.getDef()) * multElemental;
+        double multTerreno = estacionamento.MultiplicadorTerreno(p1.getTipo());
+
+        return ((double) p1.getAtk() / p2.getDef())
+                * multElemental
+                * multTerreno;
     }
     public void aplicarDano(Pokemon defensor, double dano) {
         defensor.setHp((int) (defensor.getHp() - dano));
@@ -27,7 +31,7 @@ public class Round {
     }
     public void simularRound(Pokemon p1, Pokemon p2) {
         Pokemon primeiro = ordem(p1, p2);
-        Pokemon segundo = primeiro = (primeiro == p1) ?  p2 : p1;
+        Pokemon segundo = (primeiro == p1) ? p2 : p1;
         executarAtaque(primeiro, segundo);
         if (segundo.getHp() > 0) {
             executarAtaque(segundo, primeiro);
@@ -35,8 +39,34 @@ public class Round {
         if (estacionamento != null) {
             estacionamento.curaCanteiro(p1);
             estacionamento.curaCanteiro(p2);
+            aplicarStatus(p1);
+            aplicarStatus(p2);
             System.out.println("Fim do round! HP do " + p1.getNome() + ": " + p1.getHp()
                     + " | HP do " + p2.getNome() + ": " + p2.getHp());
+
+        }
+    }
+
+    public void aplicarStatus(Pokemon pokemon){
+        if (pokemon.getStatus() == Status.QUEIMADO) {
+
+            int dano = 5;
+
+            pokemon.setHp(pokemon.getHp() - dano);
+
+            pokemon.setAtk(pokemon.getAtk() - 5);
+        }
+
+        if (pokemon.getStatus() == Status.ENVENENADO) {
+
+            int dano = 5;
+
+            pokemon.setHp(pokemon.getHp() - dano);
+        }
+
+        if (pokemon.getStatus() == Status.PARALISADO) {
+
+            pokemon.setVel(pokemon.getVel() - 5);
         }
     }
 }
