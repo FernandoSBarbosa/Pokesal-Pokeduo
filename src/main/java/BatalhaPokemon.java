@@ -1,11 +1,11 @@
 public class BatalhaPokemon {
     public static void main(String[] args) {
-        Pokemon bulbaSal = new Pokemon("Bulbasal", 49, 49, Tipos.PLANTA, 45, 45);
-        Pokemon charSal = new Pokemon("CharSal", 52, 43, Tipos.FOGO, 65, 39);
-        Pokemon squirtSal = new Pokemon("SquirtSal", 48, 65, Tipos.AGUA, 43, 44);
-        Pokemon chikoSal = new Pokemon("ChikoSal", 49, 65, Tipos.PLANTA, 45, 45);
-        Pokemon cyndaSal = new Pokemon("CyndaSal", 55, 40, Tipos.FOGO, 65, 39);
-        Pokemon totosal = new Pokemon("Totosal", 65, 64, Tipos.AGUA, 43, 50);
+        Pokemon bulbaSal = new Pokemon("Bulbasal", 49, 49, Tipos.PLANTA, 45, 45, Status.NORMAL);
+        Pokemon charSal = new Pokemon("CharSal", 52, 43, Tipos.FOGO, 65, 39, Status.NORMAL);
+        Pokemon squirtSal = new Pokemon("SquirtSal", 48, 65, Tipos.AGUA, 43, 44, Status.NORMAL);
+        Pokemon chikoSal = new Pokemon("ChikoSal", 49, 65, Tipos.PLANTA, 45, 45, Status.NORMAL);
+        Pokemon cyndaSal = new Pokemon("CyndaSal", 55, 40, Tipos.FOGO, 65, 39, Status.NORMAL);
+        Pokemon totosal = new Pokemon("Totosal", 65, 64, Tipos.AGUA, 43, 50, Status.NORMAL);
         Treinador asho = new Treinador("Asho", charSal);
         Treinador gary = new Treinador("Gary", chikoSal);
         Pokemon p1 = asho.getPokemon();
