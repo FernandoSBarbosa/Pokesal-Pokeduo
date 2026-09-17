@@ -6,6 +6,7 @@ public class Pokemon {
     private int vel;
     private int hp;
     private int maxHP;
+    private Status status;
 
     public int getMaxHP() {
         return maxHP;
@@ -61,7 +62,7 @@ public class Pokemon {
 
     public void setHp(int hp) {
         if (hp < 0){
-            this.hp = hp;
+            this.hp = 0;
         } else if (hp > this.maxHP) {
             this.hp = this.maxHP;
         } else{
@@ -70,12 +71,21 @@ public class Pokemon {
 
     }
 
-    public Pokemon(String nome, int atk, int def, Tipos tipo, int vel, int hp) {
+    public Status getStatus() {
+        return status;
+    }
+    public void setStatus(Status status) {
+        this.status = status;
+    }
+
+    public Pokemon(String nome, int atk, int def, Tipos tipo, int vel, int hp, Status status) {
         this.nome = nome;
         this.atk = atk;
         this.def = def;
         this.tipo = tipo;
         this.vel = vel;
         this.hp = hp;
+        this.maxHP = hp;
+        this.status = Status.NORMAL;
     }
 }
