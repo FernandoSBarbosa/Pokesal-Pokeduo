@@ -88,4 +88,5 @@ public class Pokemon {
         this.maxHP = hp;
         this.status = Status.NORMAL;
     }
+
 }

@@ -39,11 +39,11 @@ public class Treinador {
         switch (item) {
 
             case POTION:
-                pokemon.setHp(pokemon.getHp() + 20);
+                pokemon.setHp(pokemon.getHp() + 10);
                 break;
 
             case SUPER_POTION:
-                pokemon.setHp(pokemon.getHp() + 40);
+                pokemon.setHp(pokemon.getHp() + 20);
                 break;
 
             case ANTIDOTO:
