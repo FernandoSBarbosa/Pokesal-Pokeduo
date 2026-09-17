@@ -3,9 +3,11 @@ public class Estacionamento {
     private static final double BONUS_FOGO = 1.15;
     private static final double BONUS_AGUA = 1.10;
     private static final double CURA = 0.05;
+
     public Estacionamento(TiposTerreno terrenoInicial){
         this.terrenoAtual = terrenoInicial;
     }
+
     public double MultiplicadorTerreno(Tipos tipoAtacante) {
         if (terrenoAtual == TiposTerreno.DIA && tipoAtacante == Tipos.FOGO) {
             return BONUS_FOGO;
@@ -16,9 +18,17 @@ public class Estacionamento {
         return 1.0;
     }
     public void curaCanteiro(Pokemon pokemon) {
-        if (terrenoAtual == TiposTerreno.CANTEIRO && pokemon.getTipo() == Tipos.PLANTA) {
+        if (terrenoAtual == TiposTerreno.CANTEIRO
+                && pokemon.getTipo() == Tipos.PLANTA) {
+
             int cura = (int) (pokemon.getMaxHP() * CURA);
-            pokemon.setHp(pokemon.getHp() + cura);
+
+            int novoHp = Math.min(
+                    pokemon.getHp() + cura,
+                    pokemon.getMaxHP()
+            );
+
+            pokemon.setHp(novoHp);
         }
     }
 
