@@ -1,3 +1,4 @@
+import java.util.List;
 import java.util.Random;
 import java.util.Scanner;
 
@@ -9,42 +10,8 @@ public class BatalhaPokemon {
         System.out.println("Bem vindo treinador ao Pokeduo!\nInforme seu nome: ");
         String nome1 = sc.next();
 
-        Pokemon poke1 = null;
-        while (poke1 == null) {
-            System.out.println(nome1 + " escolha seu pokesal para batalhar!");
-            System.out.println("1 - Bulbasal\n2 - Charsal\n3 - Squirtsal\n4 - Chikosal\n5 - Cyndasal\n6 - Totosal");
-            int escolha1 = sc.nextInt();
-
-            if (escolha1 == 1) poke1 = new Pokemon("Bulbasal", 49, 49, Tipos.PLANTA, 45, 45, Status.NORMAL);
-            else if (escolha1 == 2) poke1 = new Pokemon("CharSal", 52, 43, Tipos.FOGO, 65, 39, Status.NORMAL);
-            else if (escolha1 == 3) poke1 = new Pokemon("SquirtSal", 48, 65, Tipos.AGUA, 43, 44, Status.NORMAL);
-            else if (escolha1 == 4) poke1 = new Pokemon("ChikoSal", 49, 65, Tipos.PLANTA, 45, 45, Status.NORMAL);
-            else if (escolha1 == 5) poke1 = new Pokemon("CyndaSal", 55, 40, Tipos.FOGO, 65, 39, Status.NORMAL);
-            else if (escolha1 == 6) poke1 = new Pokemon("Totosal", 65, 64, Tipos.AGUA, 43, 50, Status.NORMAL);
-            else System.out.println("Opção inválida! Tente novamente.\n");
-        }
-
+        Pokemon poke1 = escolherPokemon(sc, nome1);
         Treinador t1 = new Treinador(nome1, poke1);
-
-        System.out.println("\nAgora é sua vez segundo treinador \nInforme seu nome: ");
-        String nome2 = sc.next();
-
-        Pokemon poke2 = null;
-        while (poke2 == null) {
-            System.out.println(nome2 + " escolha seu pokesal para batalhar!");
-            System.out.println("1 - Bulbasal\n2 - Charsal\n3 - Squirtsal\n4 - Chikosal\n5 - Cyndasal\n6 - Totosal");
-            int escolha2 = sc.nextInt();
-
-            if (escolha2 == 1) poke2 = new Pokemon("Bulbasal", 49, 49, Tipos.PLANTA, 45, 45, Status.NORMAL);
-            else if (escolha2 == 2) poke2 = new Pokemon("CharSal", 52, 43, Tipos.FOGO, 65, 39, Status.NORMAL);
-            else if (escolha2 == 3) poke2 = new Pokemon("SquirtSal", 48, 65, Tipos.AGUA, 43, 44, Status.NORMAL);
-            else if (escolha2 == 4) poke2 = new Pokemon("ChikoSal", 49, 65, Tipos.PLANTA, 45, 45, Status.NORMAL);
-            else if (escolha2 == 5) poke2 = new Pokemon("CyndaSal", 55, 40, Tipos.FOGO, 65, 39, Status.NORMAL);
-            else if (escolha2 == 6) poke2 = new Pokemon("Totosal", 65, 64, Tipos.AGUA, 43, 50, Status.NORMAL);
-            else System.out.println("Opção inválida! Tente novamente.\n");
-        }
-
-        Treinador t2 = new Treinador(nome2, poke2);
 
         int mapa = random.nextInt(4) + 1;
         TiposTerreno tipoEscolhido = TiposTerreno.NORMAL;
@@ -55,13 +22,51 @@ public class BatalhaPokemon {
         Estacionamento estacionamento = new Estacionamento(tipoEscolhido);
         Round gerenciadorRound = new Round(estacionamento);
 
+        System.out.println("Qual modo de jogo você quer jogar? ");
+        System.out.println("1- Batalha contra outro jogador\n 2- Torneio contra bots");
+        int modoDeJogo = sc.nextInt();
+        if (modoDeJogo == 1) {
+            jogarBatalhaSimples(t1, sc, estacionamento, gerenciadorRound);
+        } else if (modoDeJogo == 2) {
+            jogarTorneio(t1, estacionamento, gerenciadorRound);
+        } else {
+            System.out.println("Escolha de modo de jogo inválida, escolha entre 1 e 2");
+        }
+
+        sc.close();
+    }
+
+    public static Pokemon escolherPokemon(Scanner sc, String nomeTreinador) {
+        List<Pokemon> pokesal = PokemonDex.getTodos();
+        Pokemon escolhido = null;
+        while (escolhido == null) {
+            System.out.println(nomeTreinador + " escolha seu pokesal para batalhar!");
+            System.out.println("1 - Bulbasal\n2 - Charsal\n3 - Squirtsal\n4 - Chikosal\n5 - Cyndasal\n6 - Totosal");
+            int escolha = sc.nextInt();
+
+            if (escolha >= 1 && escolha <= pokesal.size()) {
+                escolhido = pokesal.get(escolha - 1);
+            } else {
+                System.out.println("Opção inválida! Tente novamente.\n");
+            }
+        }
+        return escolhido;
+    }
+
+    public static void jogarBatalhaSimples(Treinador t1, Scanner sc, Estacionamento estacionamento, Round gerenciadorRound) {
+        System.out.println("\nAgora é sua vez segundo treinador \nInforme seu nome: ");
+        String nome2 = sc.next();
+
+        Pokemon poke2 = escolherPokemon(sc, nome2);
+        Treinador t2 = new Treinador(nome2, poke2);
+
         System.out.println("\n--- INICIO DA BATALHA ---");
         System.out.println("MAPA SORTEADO: " + estacionamento.getTerrenoAtual());
         int x = 1;
 
-        while (poke1.getHp() > 0 && poke2.getHp() > 0) {
+        while (t1.getPokemon().getHp() > 0 && poke2.getHp() > 0) {
             System.out.println("\n==================== ROUND " + x + " ====================");
-            System.out.println(poke1.getNome() + " HP: " + poke1.getHp());
+            System.out.println(t1.getPokemon().getNome() + " HP: " + t1.getPokemon().getHp());
             System.out.println(poke2.getNome() + " HP: " + poke2.getHp());
 
             boolean t1UsouItem = false;
@@ -108,29 +113,31 @@ public class BatalhaPokemon {
             if (t1UsouItem && t2UsouItem) {
                 System.out.println("Ambos os treinadores usaram itens!");
             } else if (t1UsouItem) {
-                gerenciadorRound.executarAtaque(poke2, poke1);
+                gerenciadorRound.executarAtaque(poke2, t1.getPokemon());
             } else if (t2UsouItem) {
-                gerenciadorRound.executarAtaque(poke1, poke2);
+                gerenciadorRound.executarAtaque(t1.getPokemon(), poke2);
             } else {
-                gerenciadorRound.simularRound(poke1, poke2);
+                gerenciadorRound.simularRound(t1.getPokemon(), poke2);
             }
 
-            estacionamento.curaCanteiro(poke1);
+            estacionamento.curaCanteiro(t1.getPokemon());
             estacionamento.curaCanteiro(poke2);
-            gerenciadorRound.aplicarStatus(poke1);
+            gerenciadorRound.aplicarStatus(t1.getPokemon());
             gerenciadorRound.aplicarStatus(poke2);
 
             x++;
         }
 
-
         System.out.println("\n=== FIM DA BATALHA ===");
-        if (poke1.getHp() > 0) {
+        if (t1.getPokemon().getHp() > 0) {
             System.out.println("Vencedor: " + t1.getNome());
         } else if (poke2.getHp() > 0) {
             System.out.println("Vencedor: " + t2.getNome());
         }
+    }
 
-        sc.close();
+    public static void jogarTorneio(Treinador t1, Estacionamento estacionamento, Round gerenciar) {
+        Torneio torneio = new Torneio(t1, estacionamento, gerenciar);
+        torneio.executarTorneio();
     }
 }
