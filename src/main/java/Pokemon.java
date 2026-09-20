@@ -1,4 +1,5 @@
 public class Pokemon {
+    private static final double FORTALECIMENTO = 1.10;
     private String nome;
     private int atk;
     private int def;
@@ -87,6 +88,16 @@ public class Pokemon {
         this.hp = hp;
         this.maxHP = hp;
         this.status = Status.NORMAL;
+    }
+    public void fortalecer(){
+        int hpCurado = getHp() + (int) (getMaxHP() * 0.10);
+        setHp(hpCurado);
+        int novoAtk = (int) (getAtk() * FORTALECIMENTO);
+        setAtk(novoAtk);
+        int novoDef = (int) (getDef() * FORTALECIMENTO);
+        setDef(novoDef);
+        int novoVel = (int) (getVel() * FORTALECIMENTO);
+        setVel(novoVel);
     }
 
 }
