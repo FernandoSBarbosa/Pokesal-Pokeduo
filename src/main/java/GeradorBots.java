@@ -24,7 +24,7 @@ public class GeradorBots {
  * @return retorna o pokemon buffado
  */
     public Pokemon escalarPokemon(Pokemon base, int nivel) {
-        double multiplicador = 1 + (FATOR_DIFICULDADE * nivel);
+        double multiplicador = 1 + (FATOR_DIFICULDADE * (nivel - 1));
         int novoAtk = (int) (base.getAtk() * multiplicador);
         int novoHp = (int) (base.getHp() * multiplicador);
         int novoDef = (int) (base.getDef() * multiplicador);

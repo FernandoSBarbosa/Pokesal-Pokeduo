@@ -93,8 +93,7 @@ public class Pokemon {
     * Método que fortalece o pokemon do jogador a cada nível que ele passa no torneio
     */
     public void fortalecer(){
-        int hpCurado = getHp() + (int) (getMaxHP() * 0.10);
-        setHp(hpCurado);
+        this.hp = this.maxHP;
         int novoAtk = (int) (getAtk() * FORTALECIMENTO);
         setAtk(novoAtk);
         int novoDef = (int) (getDef() * FORTALECIMENTO);
