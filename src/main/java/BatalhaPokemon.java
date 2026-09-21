@@ -79,7 +79,7 @@ public class BatalhaPokemon {
 
             if (acao1 == 2) {
                 if (t1.podeUsarItem()) {
-                    System.out.println("Escolha o item: \n1- Porção \n2- Super-porção\n3- Antídoto");
+                    System.out.println("Escolha o item: \n1- Poção \n2- Super-poção\n3- Antídoto");
                     int item = sc.nextInt();
                     if (item == 1) t1.usarItem(Item.POTION);
                     else if (item == 2) t1.usarItem(Item.SUPER_POTION);
@@ -98,7 +98,7 @@ public class BatalhaPokemon {
 
             if (acao2 == 2) {
                 if (t2.podeUsarItem()) {
-                    System.out.println("Escolha o item: \n1- Porção \n2- Super-porção\n3- Antídoto");
+                    System.out.println("Escolha o item: \n1- Poção \n2- Super-poção\n3- Antídoto");
                     int item = sc.nextInt();
                     if (item == 1) t2.usarItem(Item.POTION);
                     else if (item == 2) t2.usarItem(Item.SUPER_POTION);
@@ -114,16 +114,19 @@ public class BatalhaPokemon {
                 System.out.println("Ambos os treinadores usaram itens!");
             } else if (t1UsouItem) {
                 gerenciadorRound.executarAtaque(poke2, t1.getPokemon());
+                estacionamento.curaCanteiro(t1.getPokemon());
+                estacionamento.curaCanteiro(poke2);
+                gerenciadorRound.aplicarStatus(t1.getPokemon());
+                gerenciadorRound.aplicarStatus(poke2);
             } else if (t2UsouItem) {
                 gerenciadorRound.executarAtaque(t1.getPokemon(), poke2);
+                estacionamento.curaCanteiro(t1.getPokemon());
+                estacionamento.curaCanteiro(poke2);
+                gerenciadorRound.aplicarStatus(t1.getPokemon());
+                gerenciadorRound.aplicarStatus(poke2);
             } else {
                 gerenciadorRound.simularRound(t1.getPokemon(), poke2);
             }
-
-            estacionamento.curaCanteiro(t1.getPokemon());
-            estacionamento.curaCanteiro(poke2);
-            gerenciadorRound.aplicarStatus(t1.getPokemon());
-            gerenciadorRound.aplicarStatus(poke2);
 
             x++;
         }

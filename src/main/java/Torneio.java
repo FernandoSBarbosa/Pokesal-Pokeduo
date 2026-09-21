@@ -16,10 +16,6 @@ public class Torneio {
             Treinador bot = geradorBots.gerarBot(nivel);
             while (jogador.getPokemon().getHp() > 0 && bot.getPokemon().getHp() > 0) {
                 gerenciar.simularRound(jogador.getPokemon(), bot.getPokemon());
-                estacionamento.curaCanteiro(jogador.getPokemon());
-                estacionamento.curaCanteiro(bot.getPokemon());
-                gerenciar.aplicarStatus(jogador.getPokemon());
-                gerenciar.aplicarStatus(bot.getPokemon());
             }
             if (jogador.getPokemon().getHp() <= 0) {
                 System.out.println("Seu pokemon morreu " + jogador.getPokemon().getHp() + " Você perdeu no nível: " + nivel);

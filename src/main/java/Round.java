@@ -1,5 +1,6 @@
 public class Round {
     private Estacionamento estacionamento;
+    private static final double FATOR_DANO = 8;
 
     public Round(Estacionamento estacionamento) {
         this.estacionamento = estacionamento;
@@ -16,9 +17,10 @@ public class Round {
     }
     public double calcularDano(Pokemon p1, Pokemon p2) {
         double multElemental = p1.getTipo().multiplicadorContra(p2.getTipo());
-        double multTerreno = estacionamento.MultiplicadorTerreno(p1.getTipo());
+        double multTerreno = estacionamento.multiplicadorTerreno(p1.getTipo());
 
         return ((double) p1.getAtk() / p2.getDef())
+                *FATOR_DANO
                 * multElemental
                 * multTerreno;
     }

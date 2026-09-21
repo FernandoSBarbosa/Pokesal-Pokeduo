@@ -8,7 +8,7 @@ public class Estacionamento {
         this.terrenoAtual = terrenoInicial;
     }
 
-    public double MultiplicadorTerreno(Tipos tipoAtacante) {
+    public double multiplicadorTerreno(Tipos tipoAtacante) {
         if (terrenoAtual == TiposTerreno.DIA && tipoAtacante == Tipos.FOGO) {
             return BONUS_FOGO;
         }
