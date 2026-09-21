@@ -1,6 +1,11 @@
 import java.util.ArrayList;
 import java.util.List;
 public class PokemonDex {
+    /**
+     * Método que retorna a lista de todos os pokemons
+     *
+     * @return lista com os seis pokemons base
+     */
     public static List<Pokemon> getTodos(){
         List<Pokemon> lista = new ArrayList<>();
         lista.add(new Pokemon("Bulbasal", 49, 49, Tipos.PLANTA, 45, 45, Status.NORMAL));

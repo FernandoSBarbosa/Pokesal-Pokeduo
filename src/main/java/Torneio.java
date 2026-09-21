@@ -1,3 +1,5 @@
+/**
+ * Classe que gera o torneio as regras dele usando a classe GeradorBots*/
 public class Torneio {
     private Treinador jogador;
     private Estacionamento estacionamento;
@@ -10,6 +12,9 @@ public class Torneio {
         this.gerenciar = gerenciar;
         this.geradorBots = new GeradorBots();
     }
+    /**
+     * Método que executa o torneio com todas as regras
+     */
     public void executarTorneio(){
         int vitorias = 0;
         for (int nivel = 1; nivel <= 5; nivel++){

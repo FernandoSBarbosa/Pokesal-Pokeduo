@@ -15,6 +15,13 @@ public class Round {
             return p1;
         }
     }
+    /**
+     * Método que faz o calculo de dano aplicando as regras elemental, terreno e a fórmula
+     *
+     * @param p1 o pokemon do 1 jogador
+     * @param p2 o pokemon do 2 jogador
+     * @return retorna o dano já calculado com o terreno tipo e a formula
+     */
     public double calcularDano(Pokemon p1, Pokemon p2) {
         double multElemental = p1.getTipo().multiplicadorContra(p2.getTipo());
         double multTerreno = estacionamento.multiplicadorTerreno(p1.getTipo());

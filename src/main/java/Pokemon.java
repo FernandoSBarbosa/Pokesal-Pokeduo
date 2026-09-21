@@ -89,6 +89,9 @@ public class Pokemon {
         this.maxHP = hp;
         this.status = Status.NORMAL;
     }
+    /*
+    * Método que fortalece o pokemon do jogador a cada nível que ele passa no torneio
+    */
     public void fortalecer(){
         int hpCurado = getHp() + (int) (getMaxHP() * 0.10);
         setHp(hpCurado);

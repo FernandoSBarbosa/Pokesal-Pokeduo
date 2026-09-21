@@ -1,0 +1,1 @@
+# Foi usada IA neste trabalho para corrigir erros ortográficos, ajudar na formulação de ideias e em erros sintáticos.
