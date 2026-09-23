@@ -24,4 +24,4 @@ Paródia de Pokémon em Java, feita como projeto de faculdade. Dois treinadores 
 
 Confira a demonstração do projeto no link abaixo:
 
-[Clique aqui para assistir ao vídeo no YouTube]([https://www.youtube.com/watch?v=dQw4w9WgXcQ](https://youtu.be/FeZLaXlMq1c?is=0JsFalrapc4QwXlC))
+[Assistir ao vídeo no YouTube](https://youtu.be/FeZLaXlMq1c?si=0JsFalrapc4QwXlC)
