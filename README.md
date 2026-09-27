@@ -19,3 +19,9 @@ Paródia de Pokémon em Java, feita como projeto de faculdade. Dois treinadores 
 - `Pokemon`, `Treinador`, `Round`, `Estacionamento`: lógica de batalha, dano e terreno.
 - `PokemonDex`: lista dos seis Pokesal disponíveis.
 - `GeradorBots` e `Torneio`: geram os bots e conduzem o modo Torneio.
+
+# Meu Projeto
+
+Confira a demonstração do projeto no link abaixo:
+
+[Assistir ao vídeo no YouTube](https://youtu.be/FeZLaXlMq1c?si=0JsFalrapc4QwXlC)
