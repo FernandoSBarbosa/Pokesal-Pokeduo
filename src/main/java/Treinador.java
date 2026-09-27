@@ -32,8 +32,7 @@ public class Treinador {
     public void usarItem(Item item) {
 
         if (!podeUsarItem()) {
-            System.out.println("Você já usou os 2 itens permitidos.");
-            return;
+            throw new IllegalStateException("Você excedeu o limite de uso de itens");
         }
 
         switch (item) {
