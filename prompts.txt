@@ -1,3 +1,4 @@
 Corrija os erros ortograficos desse readme e diga coisas interessantes para pôr nele.
 Possui algum erro sintatico nesse codigo?
 Me diga como funciona o dano no jogo pokemon.
+Como eu faço comparação entre Objetos no assert
