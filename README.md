@@ -25,3 +25,19 @@ Paródia de Pokémon em Java, feita como projeto de faculdade. Dois treinadores 
 Confira a demonstração do projeto no link abaixo:
 
 [Assistir ao vídeo no YouTube](https://youtu.be/FeZLaXlMq1c?si=0JsFalrapc4QwXlC)
+
+# PokeSal - Fase 03
+
+Projeto refatorado com o Princípio da Inversão de Dependência (DIP), testes unitários e análise estática de código.
+
+## 📊 Métricas do Projeto
+
+| Métrica | Ferramenta | Resultado | Meta |
+| :--- | :--- | :---: | :---: |
+| **Cobertura de Instruções** | JaCoCo | **91%** | $\ge 80\%$ |
+| **Cobertura de Ramos** | JaCoCo | **84%** | $\ge 70\%$ |
+| **Segurança** | SonarCloud | **Nota A** | Nota A |
+| **Manutenibilidade** | SonarCloud | **Nota A** | Nota A |
+| **Duplicação** | SonarCloud | **0.0%** | $< 3\%$ |
+
+---
