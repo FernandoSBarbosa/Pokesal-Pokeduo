@@ -4,4 +4,3 @@ public enum Status {
     ENVENENADO,
     PARALISADO;
 }
-

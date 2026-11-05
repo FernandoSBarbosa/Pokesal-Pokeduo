@@ -9,76 +9,6 @@ public class Pokemon {
     private int maxHP;
     private Status status;
 
-    public int getMaxHP() {
-        return maxHP;
-    }
-
-    public void setMaxHP(int maxHP) {
-        this.maxHP = maxHP;
-    }
-
-    public int getVel() {
-        return vel;
-    }
-
-    public void setVel(int vel) {
-        this.vel = vel;
-    }
-
-    public Tipos getTipo() {
-        return tipo;
-    }
-
-    public void setTipo(Tipos tipo) {
-        this.tipo = tipo;
-    }
-
-    public int getDef() {
-        return def;
-    }
-
-    public void setDef(int def) {
-        this.def = def;
-    }
-
-    public int getAtk() {
-        return atk;
-    }
-
-    public void setAtk(int atk) {
-        this.atk = atk;
-    }
-
-    public String getNome() {
-        return nome;
-    }
-
-    public void setNome(String nome) {
-        this.nome = nome;
-    }
-
-    public int getHp() {
-        return hp;
-    }
-
-    public void setHp(int hp) {
-        if (hp < 0){
-            this.hp = 0;
-        } else if (hp > this.maxHP) {
-            this.hp = this.maxHP;
-        } else{
-            this.hp = hp;
-        }
-
-    }
-
-    public Status getStatus() {
-        return status;
-    }
-    public void setStatus(Status status) {
-        this.status = status;
-    }
-
     public Pokemon(String nome, int atk, int def, Tipos tipo, int vel, int hp, Status status) {
         this.nome = nome;
         this.atk = atk;
@@ -87,19 +17,45 @@ public class Pokemon {
         this.vel = vel;
         this.hp = hp;
         this.maxHP = hp;
-        this.status = Status.NORMAL;
-    }
-    /*
-    * Método que fortalece o pokemon do jogador a cada nível que ele passa no torneio
-    */
-    public void fortalecer(){
-        this.hp = this.maxHP;
-        int novoAtk = (int) (getAtk() * FORTALECIMENTO);
-        setAtk(novoAtk);
-        int novoDef = (int) (getDef() * FORTALECIMENTO);
-        setDef(novoDef);
-        int novoVel = (int) (getVel() * FORTALECIMENTO);
-        setVel(novoVel);
+        this.status = status != null ? status : Status.NORMAL;
     }
 
+    public String getNome() { return nome; }
+    public void setNome(String nome) { this.nome = nome; }
+
+    public int getAtk() { return atk; }
+    public void setAtk(int atk) { this.atk = atk; }
+
+    public int getDef() { return def; }
+    public void setDef(int def) { this.def = def; }
+
+    public Tipos getTipo() { return tipo; }
+    public void setTipo(Tipos tipo) { this.tipo = tipo; }
+
+    public int getVel() { return vel; }
+    public void setVel(int vel) { this.vel = vel; }
+
+    public int getHp() { return hp; }
+    public void setHp(int hp) {
+        if (hp < 0) {
+            this.hp = 0;
+        } else if (hp > this.maxHP) {
+            this.hp = this.maxHP;
+        } else {
+            this.hp = hp;
+        }
+    }
+
+    public int getMaxHP() { return maxHP; }
+    public void setMaxHP(int maxHP) { this.maxHP = maxHP; }
+
+    public Status getStatus() { return status; }
+    public void setStatus(Status status) { this.status = status; }
+
+    public void fortalecer() {
+        this.hp = this.maxHP;
+        this.atk = (int) (this.atk * FORTALECIMENTO);
+        this.def = (int) (this.def * FORTALECIMENTO);
+        this.vel = (int) (this.vel * FORTALECIMENTO);
+    }
 }
