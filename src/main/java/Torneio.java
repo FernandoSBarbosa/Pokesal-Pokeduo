@@ -1,72 +1,43 @@
+import java.util.ArrayList;
 import java.util.List;
 
 public class Torneio {
-    private final Treinador jogador;
-    private final Estacionamento estacionamento;
-    private final Round gerenciar;
-    private final GeradorBots geradorBots;
+    private final Round round;
     private final RepositorioResultados repositorio;
-    private final ServicoNotificacao servicoNotificacao;
-    private final CalculadoraBonus calculadoraBonus;
 
-    // Construtor antigo (Compatibilidade)
-    public Torneio(Treinador jogador, Estacionamento estacionamento, Round gerenciar) {
-        this(jogador, estacionamento, gerenciar, new GeradorBots(), null, null, null);
-    }
-
-    // Construtor novo com Injeção de Dependências (Fase 03)
-    public Torneio(Treinador jogador, Estacionamento estacionamento, Round gerenciar,
-                   GeradorBots geradorBots, RepositorioResultados repositorio,
-                   ServicoNotificacao servicoNotificacao, CalculadoraBonus calculadoraBonus) {
-        this.jogador = jogador;
-        this.estacionamento = estacionamento;
-        this.gerenciar = gerenciar;
-        this.geradorBots = geradorBots;
+    public Torneio(Round round, RepositorioResultados repositorio) {
+        if (round == null || repositorio == null) {
+            throw new IllegalArgumentException("Dependências não podem ser nulas.");
+        }
+        this.round = round;
         this.repositorio = repositorio;
-        this.servicoNotificacao = servicoNotificacao;
-        this.calculadoraBonus = calculadoraBonus;
     }
 
-    public Treinador executarBatalha(Treinador t1, Treinador t2) {
-        int turnos = 0;
-        while (t1.getPokemon().getHp() > 0 && t2.getPokemon().getHp() > 0) {
-            gerenciar.simularRound(t1.getPokemon(), t2.getPokemon());
-            turnos++;
+    public Treinador executarTorneio(List<Treinador> inscritos) {
+        if (inscritos == null || (inscritos.size() != 4 && inscritos.size() != 8)) {
+            throw new IllegalArgumentException("O torneio deve ter exatamente 4 ou 8 treinadores.");
         }
 
-        Treinador vencedor = (t1.getPokemon().getHp() > 0) ? t1 : t2;
-        Treinador perdedor = (vencedor == t1) ? t2 : t1;
+        List<Treinador> participantesAtuais = new ArrayList<>(inscritos);
 
-        if (repositorio != null) {
-            try {
-                repositorio.salvarResultado(new ResultadoBatalha(
-                        vencedor.getNome(), perdedor.getNome(), turnos, vencedor.getPokemon().getNome()
-                ));
-            } catch (Exception e) {
-                System.err.println("Erro ao salvar resultado: " + e.getMessage());
+        while (participantesAtuais.size() > 1) {
+            List<Treinador> vencedoresDaRodada = new ArrayList<>();
+
+            // Iteração correta em pares para 4 ou 8 participantes
+            for (int i = 0; i < participantesAtuais.size(); i += 2) {
+                Treinador t1 = participantesAtuais.get(i);
+                Treinador t2 = participantesAtuais.get(i + 1);
+
+                Pokemon vencedorPokemon = round.executarBatalha(t1.getPokemon(), t2.getPokemon());
+                Treinador vencedor = (vencedorPokemon == t1.getPokemon()) ? t1 : t2;
+                vencedoresDaRodada.add(vencedor);
             }
+
+            participantesAtuais = vencedoresDaRodada;
         }
 
-        if (vencedor == jogador && jogador.getItensUsados() == 0 && servicoNotificacao != null) {
-            servicoNotificacao.notificarConquista(jogador.getNome(), "Vitória Perfeita sem Itens");
-        }
-
-        if (vencedor == jogador && calculadoraBonus != null) {
-            int bonus = calculadoraBonus.calcularBonusXp(1, turnos);
-            jogador.getPokemon().setAtk(jogador.getPokemon().getAtk() + bonus);
-        }
-
-        return vencedor;
-    }
-
-    public Treinador executarTorneio4Treinadores(List<Treinador> participantes) {
-        if (participantes == null || participantes.size() < 4) {
-            throw new IllegalArgumentException("Necessário no mínimo 4 treinadores para o torneio");
-        }
-
-        Treinador v1 = executarBatalha(participantes.get(0), participantes.get(1));
-        Treinador v2 = executarBatalha(participantes.get(2), participantes.get(3));
-
-        return executarBatalha(v1, v2);
+        Treinador campeao = participantesAtuais.get(0);
+        repositorio.salvarResultado("Campeão do Torneio: " + campeao.getNome());
+        return campeao;
     }
 }

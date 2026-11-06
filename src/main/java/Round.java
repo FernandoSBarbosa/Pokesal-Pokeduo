@@ -1,81 +1,82 @@
 public class Round {
-    private final Estacionamento estacionamento;
+    private final ServicoTerreno servicoTerreno;
     private final GeradorAleatorio gerador;
     private final RegistroBatalha registro;
-    private static final double FATOR_DANO = 8;
 
-    // Construtor antigo (Passa null no gerador para evitar acertos críticos aleatórios nos testes legados)
-    public Round(Estacionamento estacionamento) {
-        this(estacionamento, null, null);
-    }
-
-    // Construtor novo com Injeção de Dependências (Fase 03)
-    public Round(Estacionamento estacionamento, GeradorAleatorio gerador, RegistroBatalha registro) {
-        this.estacionamento = estacionamento;
+    public Round(ServicoTerreno servicoTerreno, GeradorAleatorio gerador, RegistroBatalha registro) {
+        if (servicoTerreno == null || gerador == null || registro == null) {
+            throw new IllegalArgumentException("Todas as dependências da classe Round são obrigatórias.");
+        }
+        this.servicoTerreno = servicoTerreno;
         this.gerador = gerador;
         this.registro = registro;
     }
 
-    public Pokemon ordem(Pokemon p1, Pokemon p2) {
-        return (p1.getVel() >= p2.getVel()) ? p1 : p2;
+    public void aplicarStatus(Pokemon p) {
+        if (p == null || p.getStatus() == Status.NORMAL) return;
+
+        switch (p.getStatus()) {
+            case QUEIMADO:
+                p.setAtaque((int) (p.getAtaque() * 0.5)); // Redução de 50% no ATK
+                p.setHp(p.getHp() - 5);
+                break;
+            case ENVENENADO:
+                p.setHp(p.getHp() - 5); // Dano contínuo
+                break;
+            case PARALISADO:
+                p.setVelocidade((int) (p.getVelocidade() * 0.5)); // Redução de 50% na VEL
+                break;
+        }
     }
 
     public double calcularDano(Pokemon atacante, Pokemon defensor) {
-        return calcularDano(atacante, defensor, 100);
-    }
+        int sorteioAcerto = gerador.gerarNumero(1, 100);
+        boolean acertou = sorteioAcerto <= atacante.getPrecisao();
 
-    public double calcularDano(Pokemon atacante, Pokemon defensor, int precisao) {
-        if (gerador != null && !gerador.checarAcerto(precisao)) {
+        // Registra a tentativa no histórico MESMO SE ERRAR
+        registro.registrarAtaque(atacante, defensor, acertou);
+
+        if (!acertou) {
             return 0.0;
         }
 
-        double multElemental = atacante.getTipo().multiplicadorContra(defensor.getTipo());
-        double multTerreno = (estacionamento != null) ? estacionamento.multiplicadorTerreno(atacante.getTipo()) : 1.0;
-        double baseDano = ((double) atacante.getAtk() / defensor.getDef()) * FATOR_DANO * multElemental * multTerreno;
+        double danoBase = Math.max(1.0, atacante.getAtaque() - defensor.getDefesa());
+        double modTerreno = servicoTerreno.obterModificadorTerreno();
 
-        boolean eCritico = (gerador != null) && gerador.checarCritico();
-        if (eCritico) {
-            baseDano *= 1.5;
-        }
+        boolean critico = gerador.gerarNumero(1, 100) <= 10;
+        double modCritico = critico ? 1.5 : 1.0;
 
-        if (registro != null) {
-            registro.registrarAtaque(atacante.getNome(), defensor.getNome());
-            registro.registrarDano(defensor.getNome(), baseDano, eCritico);
-        }
-
-        return baseDano;
-    }
-
-    public void executarAtaque(Pokemon atacante, Pokemon defensor) {
-        double dano = calcularDano(atacante, defensor, 100);
-        defensor.setHp((int) (defensor.getHp() - dano));
+        return danoBase * modTerreno * modCritico;
     }
 
     public void simularRound(Pokemon p1, Pokemon p2) {
-        Pokemon primeiro = ordem(p1, p2);
-        Pokemon segundo = (primeiro == p1) ? p2 : p1;
+        aplicarStatus(p1);
+        aplicarStatus(p2);
 
-        executarAtaque(primeiro, segundo);
-        if (segundo.getHp() > 0) {
-            executarAtaque(segundo, primeiro);
+        if (p1.isVivo() && p2.isVivo()) {
+            double dano1 = calcularDano(p1, p2);
+            p2.setHp(p2.getHp() - (int) dano1);
         }
 
-        if (estacionamento != null) {
-            estacionamento.curaCanteiro(p1);
-            estacionamento.curaCanteiro(p2);
-            aplicarStatus(p1);
-            aplicarStatus(p2);
+        if (p2.isVivo() && p1.isVivo()) {
+            double dano2 = calcularDano(p2, p1);
+            p1.setHp(p1.getHp() - (int) dano2);
         }
     }
 
-    public void aplicarStatus(Pokemon pokemon) {
-        if (pokemon.getStatus() == Status.QUEIMADO) {
-            pokemon.setHp(pokemon.getHp() - 5);
-            if (registro != null) registro.registrarEfeitoStatus(pokemon.getNome(), Status.QUEIMADO);
+    public Pokemon executarBatalha(Pokemon p1, Pokemon p2) {
+        int turnos = 0;
+        final int MAX_TURNOS = 100; // Limite para evitar travamentos
+
+        while (p1.isVivo() && p2.isVivo() && turnos < MAX_TURNOS) {
+            simularRound(p1, p2);
+            turnos++;
         }
-        if (pokemon.getStatus() == Status.ENVENENADO) {
-            pokemon.setHp(pokemon.getHp() - 5);
-            if (registro != null) registro.registrarEfeitoStatus(pokemon.getNome(), Status.ENVENENADO);
+
+        if (turnos >= MAX_TURNOS && p1.isVivo() && p2.isVivo()) {
+            System.out.println("⚠️ Batalha encerrada por limite de turnos (Empate técnico).");
         }
+
+        return p1.isVivo() ? p1 : p2;
     }
 }

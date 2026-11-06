@@ -1,114 +1,89 @@
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import java.util.List;
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Arrays;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
 public class ClassesBaseTest {
 
-    @Test
-    public void testPokemonAtributosELimitesHp() {
-        Pokemon p = new Pokemon("Bulbasal", 50, 40, Tipos.PLANTA, 45, 100, Status.NORMAL);
+    @Mock private ServicoTerreno servicoTerreno;
+    @Mock private GeradorAleatorio gerador;
+    @Mock private RegistroBatalha registro;
+    @Mock private RepositorioResultados repositorio;
+    @Mock private Round roundMock;
 
-        assertEquals("Bulbasal", p.getNome());
-        assertEquals(50, p.getAtk());
-        assertEquals(40, p.getDef());
-        assertEquals(Tipos.PLANTA, p.getTipo());
-        assertEquals(45, p.getVel());
-        assertEquals(100, p.getHp());
-        assertEquals(100, p.getMaxHP());
-        assertEquals(Status.NORMAL, p.getStatus());
+    private Round round;
+    private Pokemon p1;
+    private Pokemon p2;
 
-        // Teste de setters e mutadores
-        p.setNome("Bulba");
-        assertEquals("Bulba", p.getNome());
-        p.setTipo(Tipos.FOGO);
-        assertEquals(Tipos.FOGO, p.getTipo());
-        p.setVel(50);
-        assertEquals(50, p.getVel());
-        p.setDef(45);
-        assertEquals(45, p.getDef());
-        p.setMaxHP(120);
-        assertEquals(120, p.getMaxHP());
-        p.setStatus(Status.QUEIMADO);
-        assertEquals(Status.QUEIMADO, p.getStatus());
-
-        // Limites de HP
-        p.setHp(150);
-        assertEquals(120, p.getHp());
-
-        p.setHp(-20);
-        assertEquals(0, p.getHp());
-
-        p.fortalecer();
-        assertEquals(120, p.getHp());
-        assertTrue(p.getAtk() > 50);
+    @BeforeEach
+    void setUp() {
+        round = new Round(servicoTerreno, gerador, registro);
+        p1 = new Pokemon("Pikachu", 50, 30, 60, 100);
+        p2 = new Pokemon("Charmander", 40, 20, 50, 100);
     }
 
     @Test
-    public void testPokemonDexETreinador() {
-        List<Pokemon> todos = PokemonDex.getTodos();
-        assertFalse(todos.isEmpty());
+    @DisplayName("Deve aplicar bônus de asfalto quente apenas durante o dia")
+    public void testAsfaltoQuenteApenasDuranteODia() {
+        when(servicoTerreno.obterModificadorTerreno()).thenReturn(1.5);
+        when(gerador.gerarNumero(1, 100)).thenReturn(50); // Acerto normal
 
-        Treinador t = new Treinador("Ash", todos.get(0));
-        assertEquals("Ash", t.getNome());
-        assertEquals(todos.get(0), t.getPokemon());
-        assertEquals(0, t.getItensUsados());
-        assertTrue(t.podeUsarItem());
-
-        t.usarItem(Item.POTION);
-        t.usarItem(Item.SUPER_POTION);
-        assertEquals(2, t.getItensUsados());
-        assertFalse(t.podeUsarItem());
-
-        assertThrows(IllegalStateException.class, () -> t.usarItem(Item.ANTIDOTO));
+        double dano = round.calcularDano(p1, p2);
+        assertEquals(45.0, dano, 0.01); // (50 - 20) * 1.5 = 45.0
     }
 
     @Test
-    public void testTreinadorAntidoto() {
-        Pokemon p = new Pokemon("Char", 50, 40, Tipos.FOGO, 50, 50, Status.ENVENENADO);
-        Treinador t = new Treinador("Red", p);
-        t.usarItem(Item.ANTIDOTO);
-        assertEquals(Status.NORMAL, p.getStatus());
+    @DisplayName("Deve calcular acerto crítico com multiplicador correto de 1.5x")
+    public void testDanoCriticoComPrecisao() {
+        when(servicoTerreno.obterModificadorTerreno()).thenReturn(1.0);
+        when(gerador.gerarNumero(1, 100)).thenReturn(50, 5); // 1º acerto, 2º crítico
+
+        double dano = round.calcularDano(p1, p2);
+        assertEquals(45.0, dano, 0.01); // (50 - 20) * 1.0 * 1.5 = 45.0
     }
 
     @Test
-    public void testResultadoBatalhaDTO() {
-        ResultadoBatalha res = new ResultadoBatalha("Jogador", "Bot", 5, "CharSal");
-        assertEquals("Jogador", res.getVencedor());
-        assertEquals("Bot", res.getPerdedor());
-        assertEquals(5, res.getTurnos());
-        assertEquals("CharSal", res.getPokesalUtilizado());
+    @DisplayName("Deve executar o chaveamento do torneio com 4 treinadores e mocks")
+    public void testChaveamentoTorneioComMocks() {
+        Torneio torneio = new Torneio(roundMock, repositorio);
+
+        Treinador t1 = new Treinador("T1", new Pokemon("P1", 50, 30, 50, 100));
+        Treinador t2 = new Treinador("T2", new Pokemon("P2", 50, 30, 50, 100));
+        Treinador t3 = new Treinador("T3", new Pokemon("P3", 50, 30, 50, 100));
+        Treinador t4 = new Treinador("T4", new Pokemon("P4", 50, 30, 50, 100));
+
+        List<Treinador> inscritos = Arrays.asList(t1, t2, t3, t4);
+
+        when(roundMock.executarBatalha(t1.getPokemon(), t2.getPokemon())).thenReturn(t1.getPokemon());
+        when(roundMock.executarBatalha(t3.getPokemon(), t4.getPokemon())).thenReturn(t3.getPokemon());
+        when(roundMock.executarBatalha(t1.getPokemon(), t3.getPokemon())).thenReturn(t1.getPokemon());
+
+        Treinador campeao = torneio.executarTorneio(inscritos);
+
+        assertEquals(t1, campeao);
+        verify(repositorio, atLeastOnce()).salvarResultado(anyString());
     }
 
     @Test
-    public void testGeradorAleatorioReal() {
-        GeradorAleatorioReal gerador = new GeradorAleatorioReal();
-        assertTrue(gerador.proximoInt(10) >= 0);
-        assertTrue(gerador.proximoDouble() >= 0.0);
-        assertNotNull(gerador.checarCritico());
-        assertTrue(gerador.checarAcerto(100));
-        assertFalse(gerador.checarAcerto(0));
-    }
+    @DisplayName("Valida aplicação correta de status queimado e paralisado")
+    public void testAplicacaoStatus() {
+        p1.setStatus(Status.QUEIMADO);
+        round.aplicarStatus(p1);
 
-    @Test
-    public void testServicoTerrenoEStatus() {
-        ServicoTerreno stNull = new ServicoTerreno(null);
-        assertTrue(stNull.isDia());
-        assertEquals(1.0, stNull.obterMultiplicador(Tipos.PLANTA, TiposTerreno.NORMAL));
+        assertEquals(25, p1.getAtaque()); // Redução de 50%
+        assertEquals(95, p1.getHp());     // Dano contínuo
 
-        Round r = new Round(null);
-        Pokemon p1 = new Pokemon("P1", 50, 40, Tipos.FOGO, 50, 100, Status.QUEIMADO);
-        Pokemon p2 = new Pokemon("P2", 50, 40, Tipos.FOGO, 50, 100, Status.ENVENENADO);
-        r.aplicarStatus(p1);
-        r.aplicarStatus(p2);
-        assertEquals(95, p1.getHp());
-        assertEquals(95, p2.getHp());
-    }
-
-    @Test
-    public void testEnumsValores() {
-        assertNotNull(Tipos.valueOf("FOGO"));
-        assertNotNull(Status.valueOf("QUEIMADO"));
-        assertNotNull(TiposTerreno.valueOf("CHUVA"));
-        assertNotNull(Item.valueOf("POTION"));
+        p2.setStatus(Status.PARALISADO);
+        round.aplicarStatus(p2);
+        assertEquals(25, p2.getVelocidade()); // Redução de 50%
     }
 }

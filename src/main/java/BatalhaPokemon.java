@@ -1,63 +1,59 @@
-import java.time.Clock;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 
-public class BatalhaPokemon {
+public class Main {
     public static void main(String[] args) {
-        Scanner sc = new Scanner(System.in);
-
+        // Inicialização e injeção manual das dependências
         GeradorAleatorio gerador = new GeradorAleatorioReal();
-        Clock clock = Clock.systemDefaultZone();
-        ServicoTerreno servicoTerreno = new ServicoTerreno(clock);
-        RegistroBatalha registro = null;
-        RepositorioResultados repositorio = null;
+        ServicoTerreno servicoTerreno = new ServicoTerrenoImpl(true, TipoTerreno.ASFALTO_QUENTE);
+        RegistroBatalha registro = new RegistroBatalhaConsole();
+        RepositorioResultados repositorio = new RepositorioMemoria();
 
-        System.out.println("Bem vindo treinador ao Pokeduo!\nInforme seu nome: ");
-        String nome1 = sc.next();
-
-        Pokemon poke1 = escolherPokemon(sc, nome1);
-        Treinador t1 = new Treinador(nome1, poke1);
-
-        int mapa = gerador.proximoInt(4) + 1;
-        TiposTerreno tipoEscolhido = TiposTerreno.NORMAL;
-        if (mapa == 1) tipoEscolhido = TiposTerreno.DIA;
-        else if (mapa == 2) tipoEscolhido = TiposTerreno.CHUVA;
-        else if (mapa == 3) tipoEscolhido = TiposTerreno.CANTEIRO;
-
-        Estacionamento estacionamento = new Estacionamento(tipoEscolhido, servicoTerreno);
-        Round gerenciadorRound = new Round(estacionamento, gerador, registro);
+        Round round = new Round(servicoTerreno, gerador, registro);
+        Torneio torneio = new Torneio(round, repositorio);
         GeradorBots geradorBots = new GeradorBots(gerador);
 
-        System.out.println("Qual modo de jogo você quer jogar? ");
-        System.out.println("1- Batalha contra outro jogador\n 2- Torneio contra bots");
-        int modoDeJogo = sc.nextInt();
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("=== POKESAL - FASE 03 ===");
+        System.out.println("1 - Batalha 1v1 (Jogador vs Jogador com Uso de Itens)");
+        System.out.println("2 - Torneio de Treinadores (8 Participantes)");
+        System.out.print("Escolha uma opção: ");
 
-        if (modoDeJogo == 2) {
-            Torneio torneio = new Torneio(t1, estacionamento, gerenciadorRound, geradorBots, repositorio, null, null);
-            Treinador bot1 = geradorBots.gerarBot(1);
-            Treinador bot2 = geradorBots.gerarBot(2);
-            Treinador bot3 = geradorBots.gerarBot(3);
+        int opcao = scanner.nextInt();
 
-            torneio.executarTorneio4Treinadores(List.of(t1, bot1, bot2, bot3));
-        }
+        if (opcao == 1) {
+            // Modo 1 restaurado
+            Pokemon p1 = new Pokemon("Pikachu", 50, 30, 60, 100);
+            Pokemon p2 = new Pokemon("Charmander", 55, 25, 55, 100);
 
-        sc.close();
-    }
+            System.out.println("\n--- Modo 1: Batalha 1v1 ---");
+            registro.registrarUsoItem(p1, "Poção de Vida");
+            p1.setHp(p1.getHp() + 20);
 
-    public static Pokemon escolherPokemon(Scanner sc, String nomeTreinador) {
-        List<Pokemon> pokesal = PokemonDex.getTodos();
-        Pokemon escolhido = null;
-        while (escolhido == null) {
-            System.out.println(nomeTreinador + " escolha seu pokesal para batalhar!");
-            System.out.println("1 - Bulbasal\n2 - Charsal\n3 - Squirtsal\n4 - Chikosal\n5 - Cyndasal\n6 - Totosal");
-            int escolha = sc.nextInt();
+            System.out.println("Fortalecendo " + p2.getNome() + " (+10 ATK)...");
+            p2.setAtaque(p2.getAtaque() + 10);
 
-            if (escolha >= 1 && escolha <= pokesal.size()) {
-                escolhido = pokesal.get(escolha - 1);
-            } else {
-                System.out.println("Opção inválida! Tente novamente.\n");
+            Pokemon vencedor = round.executarBatalha(p1, p2);
+            System.out.println("\n🏆 VENCEDOR DA BATALHA: " + vencedor.getNome());
+
+        } else if (opcao == 2) {
+            // Modo 2 integrado
+            List<Treinador> inscritos = new ArrayList<>();
+            for (int i = 1; i <= 8; i++) {
+                inscritos.add(geradorBots.criarBot("Bot_" + i));
             }
+
+            System.out.println("\n--- Modo 2: Torneio de 8 Treinadores ---");
+            Treinador campeao = torneio.executarTorneio(inscritos);
+
+            System.out.println("\n==========================================");
+            System.out.println(" 🏆 CAMPEÃO DO TORNEIO: " + campeao.getNome());
+            System.out.println("==========================================");
+        } else {
+            System.out.println("Opção inválida.");
         }
-        return escolhido;
+
+        scanner.close();
     }
 }
