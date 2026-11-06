@@ -1,20 +1,20 @@
 import java.time.Clock;
+import java.time.LocalTime;
 
 public class ServicoTerreno {
     private final Clock clock;
 
     public ServicoTerreno(Clock clock) {
-        this.clock = clock;
+        this.clock = clock != null ? clock : Clock.systemDefaultZone();
     }
 
     public boolean isDia() {
-        if (clock == null) return true;
-        int hora = clock.instant().atZone(clock.getZone()).getHour();
-        return hora >= 6 && hora < 18;
+        LocalTime agora = LocalTime.now(clock);
+        return !agora.isBefore(LocalTime.of(6, 0)) && agora.isBefore(LocalTime.of(18, 0));
     }
 
     public double obterMultiplicador(Tipos tipoAtacante, TiposTerreno terreno) {
-        if (terreno == TiposTerreno.DIA && tipoAtacante == Tipos.FOGO) {
+        if ((terreno == TiposTerreno.DIA || terreno == TiposTerreno.ASFALTO_QUENTE) && tipoAtacante == Tipos.FOGO) {
             return isDia() ? 1.15 : 1.0;
         }
         if (terreno == TiposTerreno.CHUVA && tipoAtacante == Tipos.AGUA) {

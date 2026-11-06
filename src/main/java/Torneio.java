@@ -2,42 +2,90 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Torneio {
+    private final Treinador jogador;
+    private final Estacionamento estacionamento;
     private final Round round;
+    private final GeradorBots geradorBots;
     private final RepositorioResultados repositorio;
+    private final ServicoNotificacao notificacao;
+    private final CalculadoraBonus calculadoraBonus;
+
+    public Torneio(Treinador jogador, Estacionamento estacionamento, Round round,
+                   GeradorBots geradorBots, RepositorioResultados repositorio,
+                   ServicoNotificacao notificacao, CalculadoraBonus calculadoraBonus) {
+        this.jogador = jogador;
+        this.estacionamento = estacionamento;
+        this.round = round;
+        this.geradorBots = geradorBots;
+        this.repositorio = repositorio;
+        this.notificacao = notificacao;
+        this.calculadoraBonus = calculadoraBonus;
+    }
 
     public Torneio(Round round, RepositorioResultados repositorio) {
-        if (round == null || repositorio == null) {
-            throw new IllegalArgumentException("Dependências não podem ser nulas.");
+        this(null, null, round, null, repositorio, null, null);
+    }
+
+    public Treinador executarBatalha(Treinador t1, Treinador t2) {
+        int turnos = round.executarBatalhaComTurnos(t1, t2);
+        Treinador vencedor = t1.getPokemon().isVivo() ? t1 : t2;
+        Treinador perdedor = (vencedor == t1) ? t2 : t1;
+
+        if (repositorio != null) {
+            try {
+                ResultadoBatalha resultado = new ResultadoBatalha(
+                        vencedor.getNome(),
+                        perdedor.getNome(),
+                        turnos,
+                        vencedor.getPokemon().getNome()
+                );
+                repositorio.salvarResultado(resultado);
+            } catch (Exception e) {
+                System.err.println("⚠️ Falha ao salvar no repositório: " + e.getMessage());
+            }
         }
-        this.round = round;
-        this.repositorio = repositorio;
+
+        if (vencedor == jogador && t1.getItensUsados() == 0 && notificacao != null) {
+            notificacao.notificarConquista(vencedor.getNome(), "Vitória Perfeita sem Itens");
+        }
+
+        if (vencedor == jogador && calculadoraBonus != null) {
+            int bonus = calculadoraBonus.calcularBonusXp(1, turnos);
+            vencedor.getPokemon().setAtk(vencedor.getPokemon().getAtk() + bonus);
+        }
+
+        return vencedor;
+    }
+
+    public Treinador executarTorneio4Treinadores(List<Treinador> inscritos) {
+        return executarTorneio(inscritos);
     }
 
     public Treinador executarTorneio(List<Treinador> inscritos) {
         if (inscritos == null || (inscritos.size() != 4 && inscritos.size() != 8)) {
-            throw new IllegalArgumentException("O torneio deve ter exatamente 4 ou 8 treinadores.");
+            throw new IllegalArgumentException("O torneio deve conter 4 ou 8 treinadores.");
         }
 
-        List<Treinador> participantesAtuais = new ArrayList<>(inscritos);
+        List<Treinador> rodadaAtual = new ArrayList<>(inscritos);
+        int numeroRodada = 1;
 
-        while (participantesAtuais.size() > 1) {
-            List<Treinador> vencedoresDaRodada = new ArrayList<>();
+        while (rodadaAtual.size() > 1) {
+            System.out.println("\n--- ROADA " + numeroRodada + " (" + rodadaAtual.size() + " Participantes) ---");
+            List<Treinador> vencedoresRodada = new ArrayList<>();
 
-            // Iteração correta em pares para 4 ou 8 participantes
-            for (int i = 0; i < participantesAtuais.size(); i += 2) {
-                Treinador t1 = participantesAtuais.get(i);
-                Treinador t2 = participantesAtuais.get(i + 1);
+            for (int i = 0; i < rodadaAtual.size(); i += 2) {
+                Treinador t1 = rodadaAtual.get(i);
+                Treinador t2 = rodadaAtual.get(i + 1);
 
-                Pokemon vencedorPokemon = round.executarBatalha(t1.getPokemon(), t2.getPokemon());
-                Treinador vencedor = (vencedorPokemon == t1.getPokemon()) ? t1 : t2;
-                vencedoresDaRodada.add(vencedor);
+                System.out.println("Confronto: " + t1.getNome() + " vs " + t2.getNome());
+                Treinador vencedor = executarBatalha(t1, t2);
+                System.out.println("Vencedor: " + vencedor.getNome());
+                vencedoresRodada.add(vencedor);
             }
-
-            participantesAtuais = vencedoresDaRodada;
+            rodadaAtual = vencedoresRodada;
+            numeroRodada++;
         }
 
-        Treinador campeao = participantesAtuais.get(0);
-        repositorio.salvarResultado("Campeão do Torneio: " + campeao.getNome());
-        return campeao;
+        return rodadaAtual.get(0);
     }
 }

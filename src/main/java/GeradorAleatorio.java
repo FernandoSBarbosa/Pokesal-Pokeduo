@@ -3,4 +3,5 @@ public interface GeradorAleatorio {
     double proximoDouble();
     boolean checarCritico();
     boolean checarAcerto(int precisao);
+    int gerarNumero(int min, int max);
 }

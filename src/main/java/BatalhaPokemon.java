@@ -1,57 +1,92 @@
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 
-public class Main {
-    public static void main(String[] args) {
-        // Inicialização e injeção manual das dependências
-        GeradorAleatorio gerador = new GeradorAleatorioReal();
-        ServicoTerreno servicoTerreno = new ServicoTerrenoImpl(true, TipoTerreno.ASFALTO_QUENTE);
-        RegistroBatalha registro = new RegistroBatalhaConsole();
-        RepositorioResultados repositorio = new RepositorioMemoria();
+public class BatalhaPokemon {
 
-        Round round = new Round(servicoTerreno, gerador, registro);
-        Torneio torneio = new Torneio(round, repositorio);
+    // Implementação utilitária para exibição de eventos no console
+    private static class ConsoleRegistroBatalha implements RegistroBatalha {
+        @Override
+        public void registrarAtaque(String atacante, String defensor) {
+            System.out.println("⚔️ " + atacante + " atacou " + defensor + "!");
+        }
+        @Override
+        public void registrarDano(String defensor, double dano, boolean eCritico) {
+            if (dano == 0) System.out.println("🛡️ O ataque errou!");
+            else System.out.printf("💥 Dano causado a %s: %.1f %s\n", defensor, dano, (eCritico ? "(CRÍTICO!)" : ""));
+        }
+        @Override
+        public void registrarEfeitoStatus(String pokemon, Status status) {
+            System.out.println("⚡ Efeito de Status de " + pokemon + ": " + status);
+        }
+        @Override
+        public void registrarEfeitoTerreno(String pokemon, TiposTerreno terreno) {
+            System.out.println("🌱 Terreno " + terreno + " afetando " + pokemon);
+        }
+        @Override
+        public void registrarUsoItem(String treinador, Item item) {
+            System.out.println("🧪 " + treinador + " usou o item " + item);
+        }
+    }
+
+    private static class RepositorioEmMemoria implements RepositorioResultados {
+        @Override
+        public void salvarResultado(ResultadoBatalha resultado) {
+            System.out.println("💾 [BD] Resultado Gravado: " + resultado.getVencedor() + " venceu " +
+                    resultado.getPerdedor() + " em " + resultado.getTurnos() + " turnos.");
+        }
+    }
+
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        Clock clock = Clock.systemDefaultZone();
+        ServicoTerreno servicoTerreno = new ServicoTerreno(clock);
+        Estacionamento estacionamento = new Estacionamento(TiposTerreno.ASFALTO_QUENTE, servicoTerreno);
+        GeradorAleatorio gerador = new GeradorAleatorioReal();
+        RegistroBatalha registro = new ConsoleRegistroBatalha();
+        RepositorioResultados repositorio = new RepositorioEmMemoria();
+
+        Round round = new Round(estacionamento, gerador, registro);
         GeradorBots geradorBots = new GeradorBots(gerador);
 
-        Scanner scanner = new Scanner(System.in);
         System.out.println("=== POKESAL - FASE 03 ===");
-        System.out.println("1 - Batalha 1v1 (Jogador vs Jogador com Uso de Itens)");
-        System.out.println("2 - Torneio de Treinadores (8 Participantes)");
+        System.out.println("1 - Batalha 1v1 (Jogador vs Jogador)");
+        System.out.println("2 - Torneio Eliminatório (4 ou 8 Treinadores)");
         System.out.print("Escolha uma opção: ");
 
         int opcao = scanner.nextInt();
 
         if (opcao == 1) {
-            // Modo 1 restaurado
-            Pokemon p1 = new Pokemon("Pikachu", 50, 30, 60, 100);
-            Pokemon p2 = new Pokemon("Charmander", 55, 25, 55, 100);
+            Pokemon p1 = new Pokemon("CharSal", 50, 40, Tipos.FOGO, 60, 100);
+            Pokemon p2 = new Pokemon("BulbaSal", 40, 50, Tipos.PLANTA, 40, 100);
 
-            System.out.println("\n--- Modo 1: Batalha 1v1 ---");
-            registro.registrarUsoItem(p1, "Poção de Vida");
-            p1.setHp(p1.getHp() + 20);
+            Treinador t1 = new Treinador("Treinador 1", p1);
+            Treinador t2 = new Treinador("Treinador 2", p2);
 
-            System.out.println("Fortalecendo " + p2.getNome() + " (+10 ATK)...");
-            p2.setAtaque(p2.getAtaque() + 10);
+            System.out.println("\n--- MODO 1: BATALHA INTERATIVA ---");
+            t1.usarItem(Item.POTION);
+            registro.registrarUsoItem(t1.getNome(), Item.POTION);
 
-            Pokemon vencedor = round.executarBatalha(p1, p2);
-            System.out.println("\n🏆 VENCEDOR DA BATALHA: " + vencedor.getNome());
+            round.simularRound(p1, p2);
+
+            if (p1.isVivo()) {
+                System.out.println("\nFortalecendo " + p1.getNome() + " após vitória...");
+                p1.fortalecer();
+            }
 
         } else if (opcao == 2) {
-            // Modo 2 integrado
             List<Treinador> inscritos = new ArrayList<>();
             for (int i = 1; i <= 8; i++) {
                 inscritos.add(geradorBots.criarBot("Bot_" + i));
             }
 
-            System.out.println("\n--- Modo 2: Torneio de 8 Treinadores ---");
+            Torneio torneio = new Torneio(null, estacionamento, round, geradorBots, repositorio, null, null);
             Treinador campeao = torneio.executarTorneio(inscritos);
 
             System.out.println("\n==========================================");
             System.out.println(" 🏆 CAMPEÃO DO TORNEIO: " + campeao.getNome());
             System.out.println("==========================================");
-        } else {
-            System.out.println("Opção inválida.");
         }
 
         scanner.close();
