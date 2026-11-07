@@ -11,15 +11,15 @@ public class Pokemon {
     private Status status;
 
     public Pokemon(String nome, int atk, int def, Tipos tipo, int vel, int hp, Status status) {
-        this.nome = nome;
-        this.atk = atk;
-        this.def = def;
-        this.tipo = tipo;
-        this.vel = vel;
+        setNome(nome);
+        setAtk(atk);
+        setDef(def);
+        setTipo(tipo);
+        setVel(vel);
+        setMaxHP(hp);
         this.hp = hp;
-        this.maxHP = hp;
-        this.precisao = 100;
-        this.status = status != null ? status : Status.NORMAL;
+        setPrecisao(100);
+        setStatus(status);
     }
 
     public Pokemon(String nome, int atk, int def, Tipos tipo, int vel, int hp) {
@@ -27,7 +27,10 @@ public class Pokemon {
     }
 
     public String getNome() { return nome; }
-    public void setNome(String nome) { this.nome = nome; }
+    public void setNome(String nome) {
+        if (nome == null || nome.isBlank()) throw new IllegalArgumentException("Nome é obrigatório.");
+        this.nome = nome;
+    }
 
     public int getAtk() { return atk; }
     public int getAtaque() { return atk; }
@@ -39,7 +42,10 @@ public class Pokemon {
     public void setDef(int def) { this.def = Math.max(0, def); }
 
     public Tipos getTipo() { return tipo; }
-    public void setTipo(Tipos tipo) { this.tipo = tipo; }
+    public void setTipo(Tipos tipo) {
+        if (tipo == null) throw new IllegalArgumentException("Tipo é obrigatório.");
+        this.tipo = tipo;
+    }
 
     public int getVel() { return vel; }
     public int getVelocidade() { return vel; }
@@ -47,31 +53,30 @@ public class Pokemon {
     public void setVelocidade(int vel) { setVel(vel); }
 
     public int getHp() { return hp; }
-    public void setHp(int hp) {
-        if (hp < 0) {
-            this.hp = 0;
-        } else if (hp > this.maxHP) {
-            this.hp = this.maxHP;
-        } else {
-            this.hp = hp;
-        }
-    }
+    public void setHp(int hp) { this.hp = Math.max(0, Math.min(hp, maxHP)); }
 
     public int getMaxHP() { return maxHP; }
-    public void setMaxHP(int maxHP) { this.maxHP = maxHP; }
+    public void setMaxHP(int maxHP) {
+        if (maxHP <= 0) throw new IllegalArgumentException("HP máximo deve ser positivo.");
+        this.maxHP = maxHP;
+        this.hp = Math.min(this.hp, maxHP);
+    }
 
     public int getPrecisao() { return precisao; }
-    public void setPrecisao(int precisao) { this.precisao = precisao; }
+    public void setPrecisao(int precisao) {
+        if (precisao < 0 || precisao > 100) throw new IllegalArgumentException("Precisão deve estar entre 0 e 100.");
+        this.precisao = precisao;
+    }
 
     public Status getStatus() { return status; }
-    public void setStatus(Status status) { this.status = status; }
+    public void setStatus(Status status) { this.status = status == null ? Status.NORMAL : status; }
 
-    public boolean isVivo() { return this.hp > 0; }
+    public boolean isVivo() { return hp > 0; }
 
     public void fortalecer() {
-        this.hp = this.maxHP;
-        this.atk = (int) (this.atk * FORTALECIMENTO);
-        this.def = (int) (this.def * FORTALECIMENTO);
-        this.vel = (int) (this.vel * FORTALECIMENTO);
+        hp = maxHP;
+        atk = (int) (atk * FORTALECIMENTO);
+        def = (int) (def * FORTALECIMENTO);
+        vel = (int) (vel * FORTALECIMENTO);
     }
 }

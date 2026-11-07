@@ -69,6 +69,8 @@
                             <excludes>
                                 <!-- Exclui a classe interativa com main/Scanner do relatório -->
                                 <exclude>BatalhaPokemon.class</exclude>
+                                <!-- Implementações de console são infraestrutura, não regras de negócio -->
+                                <exclude>BatalhaPokemon$*.class</exclude>
                             </excludes>
                         </configuration>
                     </execution>

@@ -55,7 +55,7 @@ public class BatalhaPokemon {
         System.out.println("2 - Torneio Eliminatório (4 ou 8 Treinadores)");
         System.out.print("Escolha uma opção: ");
 
-        int opcao = scanner.nextInt();
+        int opcao = lerInteiro(scanner, 1, 2, "Escolha 1 ou 2: ");
 
         if (opcao == 1) {
             Pokemon p1 = new Pokemon("CharSal", 50, 40, Tipos.FOGO, 60, 100);
@@ -63,21 +63,21 @@ public class BatalhaPokemon {
 
             Treinador t1 = new Treinador("Treinador 1", p1);
             Treinador t2 = new Treinador("Treinador 2", p2);
+            t1.setRegistroBatalha(registro);
+            t2.setRegistroBatalha(registro);
 
             System.out.println("\n--- MODO 1: BATALHA INTERATIVA ---");
             t1.usarItem(Item.POTION);
-            registro.registrarUsoItem(t1.getNome(), Item.POTION);
 
-            round.simularRound(p1, p2);
-
-            if (p1.isVivo()) {
-                System.out.println("\nFortalecendo " + p1.getNome() + " após vitória...");
-                p1.fortalecer();
-            }
+            Pokemon vencedor = round.executarBatalha(p1, p2);
+            if (vencedor == null) System.out.println("\nA batalha terminou empatada após o limite de turnos.");
+            else System.out.println("\nVencedor: " + vencedor.getNome());
 
         } else if (opcao == 2) {
+            System.out.print("Quantidade de treinadores (4 ou 8): ");
+            int quantidade = lerQuantidadeTorneio(scanner);
             List<Treinador> inscritos = new ArrayList<>();
-            for (int i = 1; i <= 8; i++) {
+            for (int i = 1; i <= quantidade; i++) {
                 inscritos.add(geradorBots.criarBot("Bot_" + i));
             }
 
@@ -87,8 +87,29 @@ public class BatalhaPokemon {
             System.out.println("\n==========================================");
             System.out.println(" 🏆 CAMPEÃO DO TORNEIO: " + campeao.getNome());
             System.out.println("==========================================");
+        } else {
+            System.out.println("Opção inválida.");
         }
 
         scanner.close();
+    }
+
+    private static int lerQuantidadeTorneio(Scanner scanner) {
+        while (true) {
+            String entrada = scanner.nextLine().trim();
+            if (entrada.equals("4") || entrada.equals("8")) return Integer.parseInt(entrada);
+            System.out.print("Informe 4 ou 8: ");
+        }
+    }
+
+    private static int lerInteiro(Scanner scanner, int minimo, int maximo, String mensagemErro) {
+        while (true) {
+            String entrada = scanner.nextLine().trim();
+            try {
+                int valor = Integer.parseInt(entrada);
+                if (valor >= minimo && valor <= maximo) return valor;
+            } catch (NumberFormatException ignored) { }
+            System.out.print(mensagemErro);
+        }
     }
 }

@@ -5,7 +5,8 @@ public class ServicoTerreno {
     private final Clock clock;
 
     public ServicoTerreno(Clock clock) {
-        this.clock = clock != null ? clock : Clock.systemDefaultZone();
+        if (clock == null) throw new IllegalArgumentException("Clock é obrigatório.");
+        this.clock = clock;
     }
 
     public boolean isDia() {
@@ -14,6 +15,7 @@ public class ServicoTerreno {
     }
 
     public double obterMultiplicador(Tipos tipoAtacante, TiposTerreno terreno) {
+        if (tipoAtacante == null || terreno == null) throw new IllegalArgumentException("Tipo e terreno são obrigatórios.");
         if ((terreno == TiposTerreno.DIA || terreno == TiposTerreno.ASFALTO_QUENTE) && tipoAtacante == Tipos.FOGO) {
             return isDia() ? 1.15 : 1.0;
         }

@@ -13,8 +13,14 @@ public class GeradorAleatorioReal implements GeradorAleatorio {
     public boolean checarCritico() { return random.nextDouble() < 0.0625; }
 
     @Override
-    public boolean checarAcerto(int precisao) { return (random.nextInt(100) + 1) <= precisao; }
+    public boolean checarAcerto(int precisao) {
+        if (precisao < 0 || precisao > 100) throw new IllegalArgumentException("Precisão deve estar entre 0 e 100.");
+        return (random.nextInt(100) + 1) <= precisao;
+    }
 
     @Override
-    public int gerarNumero(int min, int max) { return random.nextInt((max - min) + 1) + min; }
+    public int gerarNumero(int min, int max) {
+        if (min > max) throw new IllegalArgumentException("O mínimo não pode ser maior que o máximo.");
+        return random.nextInt((max - min) + 1) + min;
+    }
 }
