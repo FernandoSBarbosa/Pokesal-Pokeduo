@@ -70,14 +70,18 @@ class TorneioTest {
         when(gerador.checarCritico()).thenReturn(false, false);
         Round batalha = new Round(new Estacionamento(TiposTerreno.NORMAL,
                 new ServicoTerreno(Clock.systemUTC())), gerador, registro);
-        batalha.simularRound(pokemon("Rapido", 10, 10, Tipos.FOGO, 20, 100),
-                pokemon("Lento", 10, 10, Tipos.AGUA, 10, 100));
+        Pokemon rapido = new Pokemon("Rapido", 10, 10, Tipos.FOGO, 20, 100, Status.QUEIMADO);
+        Pokemon lento = new Pokemon("Lento", 10, 10, Tipos.AGUA, 10, 100, Status.ENVENENADO);
+        batalha.simularRound(rapido, lento);
         InOrder ordem = inOrder(registro);
         ordem.verify(registro).registrarAtaque("Rapido", "Lento");
         ordem.verify(registro).registrarDano(eq("Lento"), anyDouble(), eq(false));
         ordem.verify(registro).registrarAtaque("Lento", "Rapido");
         ordem.verify(registro).registrarDano(eq("Rapido"), anyDouble(), eq(false));
-        verify(registro, atLeastOnce()).registrarEfeitoTerreno(anyString(), any());
+        ordem.verify(registro).registrarEfeitoStatus("Rapido", Status.QUEIMADO);
+        ordem.verify(registro).registrarEfeitoStatus("Lento", Status.ENVENENADO);
+        ordem.verify(registro).registrarEfeitoTerreno("Rapido", TiposTerreno.NORMAL);
+        ordem.verify(registro).registrarEfeitoTerreno("Lento", TiposTerreno.NORMAL);
     }
 
     @Test

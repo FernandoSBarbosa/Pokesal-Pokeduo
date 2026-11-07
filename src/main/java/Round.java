@@ -1,3 +1,6 @@
+import java.util.ArrayList;
+import java.util.List;
+
 public class Round {
     private final Estacionamento estacionamento;
     private final GeradorAleatorio gerador;
@@ -18,6 +21,10 @@ public class Round {
     }
 
     public void aplicarStatus(Pokemon p) {
+        aplicarStatus(p, null);
+    }
+
+    private void aplicarStatus(Pokemon p, List<Runnable> eventosAdiados) {
         if (p == null || !p.isVivo() || p.getStatus() == Status.NORMAL) return;
         switch (p.getStatus()) {
             case QUEIMADO -> p.setHp(p.getHp() - 5);
@@ -25,7 +32,11 @@ public class Round {
             case PARALISADO -> { /* A velocidade é reduzida uma única vez ao aplicar o status. */ }
             default -> { }
         }
-        if (registro != null) registro.registrarEfeitoStatus(p.getNome(), p.getStatus());
+        if (registro != null) {
+            Runnable evento = () -> registro.registrarEfeitoStatus(p.getNome(), p.getStatus());
+            if (eventosAdiados == null) evento.run();
+            else eventosAdiados.add(evento);
+        }
     }
 
     public double calcularDano(Pokemon atacante, Pokemon defensor, int precisao) {
@@ -64,21 +75,24 @@ public class Round {
 
     public void simularRound(Pokemon p1, Pokemon p2) {
         if (p1 == null || p2 == null) throw new IllegalArgumentException("Dois Pokémon são obrigatórios.");
-        aplicarStatus(p1);
-        aplicarStatus(p2);
+        List<Runnable> eventosAdiados = new ArrayList<>();
+        aplicarStatus(p1, eventosAdiados);
+        aplicarStatus(p2, eventosAdiados);
 
         if (estacionamento != null) {
             estacionamento.curaCanteiro(p1);
             estacionamento.curaCanteiro(p2);
-        }
-        if (registro != null && estacionamento != null) {
-            registro.registrarEfeitoTerreno(p1.getNome(), estacionamento.getTerrenoAtual());
-            registro.registrarEfeitoTerreno(p2.getNome(), estacionamento.getTerrenoAtual());
+            if (registro != null) {
+                TiposTerreno terreno = estacionamento.getTerrenoAtual();
+                eventosAdiados.add(() -> registro.registrarEfeitoTerreno(p1.getNome(), terreno));
+                eventosAdiados.add(() -> registro.registrarEfeitoTerreno(p2.getNome(), terreno));
+            }
         }
         Pokemon primeiro = ordem(p1, p2);
         Pokemon segundo = primeiro == p1 ? p2 : p1;
         atacar(primeiro, segundo);
         atacar(segundo, primeiro);
+        eventosAdiados.forEach(Runnable::run);
     }
 
     public Pokemon executarBatalha(Pokemon p1, Pokemon p2) {
