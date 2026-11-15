@@ -1,29 +1,52 @@
+import java.util.List;
+
+/** Gera os bots do torneio: sorteia um Pokésal e fortalece conforme o nível do bot. */
 public class GeradorBots {
+    private static final double FATOR_DIFICULDADE = 0.15;
+
     private final GeradorAleatorio gerador;
 
     public GeradorBots(GeradorAleatorio gerador) {
-        if (gerador == null) {
-            throw new IllegalArgumentException("GeradorAleatorio é obrigatório.");
-        }
         this.gerador = gerador;
     }
 
-    public Pokemon escalarPokemon(Pokemon base, int nivel) {
-        double multiplicador = 1.0 + (nivel - 1) * 0.15;
-        int atk = (int) (base.getAtk() * multiplicador);
-        int def = (int) (base.getDef() * multiplicador);
-        int vel = (int) (base.getVel() * multiplicador);
-        int hp = (int) (base.getHp() * multiplicador);
-
-        return new Pokemon("Bot-" + base.getNome(), atk, def, base.getTipo(), vel, hp, Status.NORMAL);
+    /**
+     * Sorteia um dos Pokésal da Pokédex.
+     *
+     * @return Pokémon sorteado
+     */
+    public Pokemon sortearBase() {
+        List<Pokemon> pokemons = PokemonDex.getTodos();
+        return pokemons.get(gerador.proximoInt(pokemons.size()));
     }
 
-    public Treinador criarBot(String nome) {
-        int atk = gerador.gerarNumero(30, 60);
-        int def = gerador.gerarNumero(20, 50);
-        int vel = gerador.gerarNumero(40, 70);
-        Tipos tipo = Tipos.values()[gerador.proximoInt(Tipos.values().length)];
-        Pokemon p = new Pokemon("Bot-" + nome, atk, def, tipo, vel, 100);
-        return new Treinador(nome, p);
+    /**
+     * Cria uma cópia do Pokémon com os atributos aumentados em 15% por nível acima do 1.
+     *
+     * @param base  Pokémon original
+     * @param nivel nível do bot (1 mantém os atributos)
+     * @return Pokémon fortalecido
+     */
+    public Pokemon escalarPokemon(Pokemon base, int nivel) {
+        double multiplicador = 1 + (FATOR_DIFICULDADE * (nivel - 1));
+        return new Pokemon(
+                base.getNome(),
+                (int) (base.getAtk() * multiplicador),
+                (int) (base.getDef() * multiplicador),
+                base.getTipo(),
+                (int) (base.getVel() * multiplicador),
+                (int) (base.getHp() * multiplicador),
+                base.getStatus(),
+                base.getGolpe());
+    }
+
+    /**
+     * Gera um bot: Pokémon sorteado e fortalecido pelo nível.
+     *
+     * @param nivel nível do bot
+     * @return treinador bot
+     */
+    public Treinador gerarBot(int nivel) {
+        return new Treinador("Bot nível " + nivel, escalarPokemon(sortearBase(), nivel));
     }
 }

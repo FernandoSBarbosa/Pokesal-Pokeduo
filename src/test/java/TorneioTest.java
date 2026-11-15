@@ -6,200 +6,251 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.Clock;
-import java.time.Instant;
-import java.time.ZoneId;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+/**
+ * O Torneio é testado isolado: Round, repositório, notificação e calculadora são mocks.
+ * Não mockamos Treinador nem Pokemon (dados simples que o Torneio precisa ler e alterar).
+ *
+ * Matchers: any() quando o argumento não importa para a verificação (ex.: "alguma batalha");
+ * valores exatos quando o argumento é o objetivo (ex.: o nome do jogador na conquista).
+ */
 @ExtendWith(MockitoExtension.class)
-class TorneioTest {
-    @Mock GeradorAleatorio gerador;
-    @Mock RegistroBatalha registro;
-    @Mock RepositorioResultados repositorio;
-    @Mock ServicoNotificacao notificacao;
-    @Mock CalculadoraBonus calculadoraBonus;
+public class TorneioTest {
 
-    @InjectMocks Round round;
+    @Mock
+    private Round round;
+    @Mock
+    private RepositorioResultados repositorio;
+    @Mock
+    private ServicoNotificacao notificacao;
+    @Mock
+    private CalculadoraBonus calculadoraBonus;
+    @InjectMocks
+    private Torneio torneio;   // sem jogador (null): só bots
 
-    private Pokemon pokemon(String nome, int atk, int def, Tipos tipo, int vel, int hp) {
-        return new Pokemon(nome, atk, def, tipo, vel, hp);
+    private Treinador criarTreinador(String nome) {
+        return new Treinador(nome, new Pokemon("Pokesal de " + nome, 50, 40, Tipos.FOGO, 60, 40, Status.NORMAL));
     }
 
-    @Test
-    void testAcertoCriticoComGeradorMockado() {
-        when(gerador.checarAcerto(anyInt())).thenReturn(true);
-        when(gerador.checarCritico()).thenReturn(true);
-        Round batalha = new Round(null, gerador, registro);
-        double dano = batalha.calcularDano(pokemon("F", 50, 40, Tipos.FOGO, 50, 100),
-                pokemon("P", 40, 50, Tipos.PLANTA, 40, 100), 100);
-        assertEquals(30.0, dano, 0.01);
-        verify(gerador).checarCritico();
+    private Torneio criarTorneioComJogador(Treinador jogador) {
+        return new Torneio(jogador, round, repositorio, notificacao, calculadoraBonus);
     }
 
-    @Test
-    void testGolpeErraQuandoPrecisaoFalha() {
-        when(gerador.checarAcerto(70)).thenReturn(false);
-        Pokemon defensor = pokemon("P", 40, 50, Tipos.PLANTA, 40, 100);
-        Round batalha = new Round(null, gerador, registro);
-        assertEquals(0.0, batalha.calcularDano(pokemon("F", 50, 40, Tipos.FOGO, 50, 100), defensor, 70));
-        assertEquals(100, defensor.getHp());
-        verify(gerador, never()).checarCritico();
-    }
-
-    @Test
-    void testAsfaltoQuenteApenasDuranteDia() {
-        Clock dia = Clock.fixed(Instant.parse("2026-11-05T10:00:00Z"), ZoneId.of("UTC"));
-        Clock noite = Clock.fixed(Instant.parse("2026-11-05T22:00:00Z"), ZoneId.of("UTC"));
-        ServicoTerreno diaMock = mock(ServicoTerreno.class);
-        ServicoTerreno noiteMock = mock(ServicoTerreno.class);
-        when(diaMock.obterMultiplicador(Tipos.FOGO, TiposTerreno.ASFALTO_QUENTE)).thenReturn(1.15);
-        when(noiteMock.obterMultiplicador(Tipos.FOGO, TiposTerreno.ASFALTO_QUENTE)).thenReturn(1.0);
-        assertEquals(1.15, new Estacionamento(TiposTerreno.ASFALTO_QUENTE, diaMock).multiplicadorTerreno(Tipos.FOGO));
-        assertEquals(1.0, new Estacionamento(TiposTerreno.ASFALTO_QUENTE, noiteMock).multiplicadorTerreno(Tipos.FOGO));
-        assertTrue(new ServicoTerreno(dia).isDia());
-        assertFalse(new ServicoTerreno(noite).isDia());
-    }
-
-    @Test
-    void testSequenciaDeEventosNoTurno() {
-        when(gerador.checarAcerto(anyInt())).thenReturn(true, true);
-        when(gerador.checarCritico()).thenReturn(false, false);
-        Round batalha = new Round(new Estacionamento(TiposTerreno.NORMAL,
-                new ServicoTerreno(Clock.systemUTC())), gerador, registro);
-        Pokemon rapido = new Pokemon("Rapido", 10, 10, Tipos.FOGO, 20, 100, Status.QUEIMADO);
-        Pokemon lento = new Pokemon("Lento", 10, 10, Tipos.AGUA, 10, 100, Status.ENVENENADO);
-        batalha.simularRound(rapido, lento);
-        InOrder ordem = inOrder(registro);
-        ordem.verify(registro).registrarAtaque("Rapido", "Lento");
-        ordem.verify(registro).registrarDano(eq("Lento"), anyDouble(), eq(false));
-        ordem.verify(registro).registrarAtaque("Lento", "Rapido");
-        ordem.verify(registro).registrarDano(eq("Rapido"), anyDouble(), eq(false));
-        ordem.verify(registro).registrarEfeitoStatus("Rapido", Status.QUEIMADO);
-        ordem.verify(registro).registrarEfeitoStatus("Lento", Status.ENVENENADO);
-        ordem.verify(registro).registrarEfeitoTerreno("Rapido", TiposTerreno.NORMAL);
-        ordem.verify(registro).registrarEfeitoTerreno("Lento", TiposTerreno.NORMAL);
-    }
-
-    @Test
-    void testResultadoSalvoAoFimDaBatalha() {
-        when(gerador.checarAcerto(anyInt())).thenReturn(true);
-        when(gerador.checarCritico()).thenReturn(false);
-        Treinador jogador = new Treinador("Jogador", pokemon("F", 100, 40, Tipos.FOGO, 50, 100));
-        Treinador bot = new Treinador("Bot", pokemon("P", 10, 50, Tipos.PLANTA, 10, 10));
-        Torneio torneio = new Torneio(jogador, null, new Round(null, gerador, null), null, repositorio, null, null);
-        assertSame(jogador, torneio.executarBatalha(jogador, bot));
-        ArgumentCaptor<ResultadoBatalha> captor = ArgumentCaptor.forClass(ResultadoBatalha.class);
-        verify(repositorio).salvarResultado(captor.capture());
-        assertEquals("Jogador", captor.getValue().getVencedor());
-        assertEquals("Bot", captor.getValue().getPerdedor());
-        assertTrue(captor.getValue().getTurnos() > 0);
-        assertTrue(captor.getValue().getPokesalUtilizado().contains("F"));
-    }
-
-    @Test
-    void testFalhaNoRepositorioNaoInvalidaBatalha() {
-        when(gerador.checarAcerto(anyInt())).thenReturn(true);
-        when(gerador.checarCritico()).thenReturn(false);
-        doThrow(new RuntimeException("offline")).when(repositorio).salvarResultado(any(ResultadoBatalha.class));
-        Treinador jogador = new Treinador("J", pokemon("F", 100, 40, Tipos.FOGO, 50, 100));
-        Treinador bot = new Treinador("B", pokemon("P", 10, 50, Tipos.PLANTA, 10, 10));
-        Torneio torneio = new Torneio(jogador, null, new Round(null, gerador, null), null, repositorio, null, null);
-        assertSame(jogador, torneio.executarBatalha(jogador, bot));
-        verify(repositorio).salvarResultado(any(ResultadoBatalha.class));
-    }
-
-    @Test
-    void testRepositorioNaoChamadoSeBatalhaNaoTerminou() {
-        Round roundMock = mock(Round.class);
-        when(roundMock.executarBatalhaComTurnos(any(Treinador.class), any(Treinador.class))).thenReturn(50);
-        Treinador t1 = new Treinador("A", pokemon("A", 10, 100, Tipos.FOGO, 10, 100));
-        Treinador t2 = new Treinador("B", pokemon("B", 10, 100, Tipos.AGUA, 10, 100));
-        Torneio torneio = new Torneio(null, null, roundMock, null, repositorio, null, null);
-        assertNull(torneio.executarBatalha(t1, t2));
-        verify(repositorio, never()).salvarResultado(any(ResultadoBatalha.class));
-    }
-
-    @Test
-    void testChaveamentoTorneioAvancaVencedores() {
-        Round roundMock = mock(Round.class);
-        when(roundMock.executarBatalhaComTurnos(any(Treinador.class), any(Treinador.class))).thenAnswer(inv -> {
-            Treinador a = inv.getArgument(0);
-            Treinador b = inv.getArgument(1);
-            b.getPokemon().setHp(0);
-            return 1;
+    // Faz o primeiro treinador vencer, derrubando o segundo, em 'turnos' turnos.
+    private void primeiroVence(Treinador t1, Treinador t2, int turnos) {
+        when(round.executarBatalha(t1, t2)).thenAnswer(invocacao -> {
+            t2.getPokemon().setHp(0);
+            return turnos;
         });
-        List<Treinador> inscritos = List.of(
-                new Treinador("T1", pokemon("P1", 10, 10, Tipos.FOGO, 10, 100)),
-                new Treinador("T2", pokemon("P2", 10, 10, Tipos.AGUA, 10, 100)),
-                new Treinador("T3", pokemon("P3", 10, 10, Tipos.FOGO, 10, 100)),
-                new Treinador("T4", pokemon("P4", 10, 10, Tipos.AGUA, 10, 100)));
-        Torneio torneio = new Torneio(null, null, roundMock, null, repositorio, null, null);
-        assertEquals("T1", torneio.executarTorneio(inscritos).getNome());
-        verify(roundMock, times(3)).executarBatalhaComTurnos(any(Treinador.class), any(Treinador.class));
+    }
+
+    // ---------------- Testes obrigatórios da Fase 03 ----------------
+
+    @Test
+    public void testResultadoSalvoAoFimDaBatalha() {
+        Treinador ana = criarTreinador("Ana");
+        Treinador bruno = criarTreinador("Bruno");
+        primeiroVence(ana, bruno, 3);
+
+        Treinador vencedor = torneio.executarBatalha(ana, bruno);
+
+        ArgumentCaptor<ResultadoBatalha> captor = ArgumentCaptor.forClass(ResultadoBatalha.class);
+        verify(repositorio, times(1)).salvarResultado(captor.capture());
+        ResultadoBatalha salvo = captor.getValue();
+        assertSame(ana, vencedor);
+        assertEquals("Ana", salvo.getVencedor());
+        assertEquals("Bruno", salvo.getPerdedor());
+        assertEquals(3, salvo.getTurnos());
+        assertEquals("Pokesal de Ana", salvo.getPokesalVencedor());
+        assertEquals("Pokesal de Bruno", salvo.getPokesalPerdedor());
+    }
+
+    @Test
+    public void testFalhaNoRepositorioNaoInvalidaBatalha() {
+        Treinador ana = criarTreinador("Ana");
+        Treinador bruno = criarTreinador("Bruno");
+        primeiroVence(ana, bruno, 3);
+        doThrow(new IllegalStateException("Banco offline"))
+                .when(repositorio).salvarResultado(any(ResultadoBatalha.class));
+
+        Treinador vencedor = torneio.executarBatalha(ana, bruno);
+
+        assertSame(ana, vencedor);   // o vencedor continua definido
         verify(repositorio, atLeastOnce()).salvarResultado(any(ResultadoBatalha.class));
     }
 
     @Test
-    void testNotificacaoSemItensEAumentoDeAtributo() {
-        when(gerador.checarAcerto(anyInt())).thenReturn(true);
-        when(gerador.checarCritico()).thenReturn(false);
-        when(calculadoraBonus.calcularBonusXp(1, 1)).thenReturn(5);
-        Treinador jogador = new Treinador("J", pokemon("F", 100, 40, Tipos.FOGO, 50, 100));
-        Treinador bot = new Treinador("B", pokemon("P", 10, 50, Tipos.PLANTA, 10, 10));
-        Torneio torneio = new Torneio(jogador, null, new Round(null, gerador, null), null,
-                repositorio, notificacao, calculadoraBonus);
-        torneio.executarBatalha(jogador, bot);
-        verify(notificacao).notificarConquista("J", "Vitória Perfeita sem Itens");
-        verify(calculadoraBonus).calcularBonusXp(1, 1);
-        assertEquals(105, jogador.getPokemon().getAtk());
+    public void testRepositorioNaoChamadoSeBatalhaNaoTerminou() {
+        Treinador ana = criarTreinador("Ana");
+        Treinador bruno = criarTreinador("Bruno");
+        when(round.executarBatalha(ana, bruno)).thenThrow(new IllegalStateException("Batalha interrompida"));
+
+        assertThrows(IllegalStateException.class, () -> torneio.executarBatalha(ana, bruno));
+
+        verify(repositorio, never()).salvarResultado(any(ResultadoBatalha.class));
     }
 
     @Test
-    void requisitoAutoralNotificaConquistaApenasQuandoJogadorVenceSemItens() {
-        when(gerador.checarAcerto(anyInt())).thenReturn(true);
-        when(gerador.checarCritico()).thenReturn(false);
-        Treinador jogador = new Treinador("J", pokemon("F", 100, 40, Tipos.FOGO, 50, 100));
-        Treinador bot = new Treinador("B", pokemon("P", 10, 50, Tipos.PLANTA, 10, 10));
-        Torneio torneio = new Torneio(jogador, null, new Round(null, gerador, null), null,
-                repositorio, notificacao, null);
+    public void testChaveamentoTorneioAvancaVencedores() {
+        Treinador t1 = criarTreinador("T1");
+        Treinador t2 = criarTreinador("T2");
+        Treinador t3 = criarTreinador("T3");
+        Treinador t4 = criarTreinador("T4");
+        // Resultado mockado: em qualquer batalha, o primeiro da dupla vence.
+        when(round.executarBatalha(any(Treinador.class), any(Treinador.class))).thenAnswer(invocacao -> {
+            Treinador perdedor = invocacao.getArgument(1);
+            perdedor.getPokemon().setHp(0);
+            return 2;
+        });
 
-        assertSame(jogador, torneio.executarBatalha(jogador, bot));
-        verify(notificacao, times(1)).notificarConquista("J", "Vitória Perfeita sem Itens");
+        Treinador campeao = torneio.executarTorneio(List.of(t1, t2, t3, t4));
 
-        Treinador jogador2 = new Treinador("J2", pokemon("F2", 100, 40, Tipos.FOGO, 50, 100));
-        Treinador bot2 = new Treinador("B2", pokemon("P2", 10, 50, Tipos.PLANTA, 10, 10));
-        jogador2.getPokemon().setHp(90);
-        jogador2.usarItem(Item.POTION);
-        Torneio torneioComItem = new Torneio(jogador2, null, new Round(null, gerador, null), null,
-                repositorio, notificacao, null);
-        torneioComItem.executarBatalha(jogador2, bot2);
-        verify(notificacao, times(1)).notificarConquista(anyString(), anyString());
+        assertSame(t1, campeao);
+        InOrder ordem = inOrder(round);
+        ordem.verify(round).executarBatalha(t1, t2);   // semifinal 1
+        ordem.verify(round).executarBatalha(t3, t4);   // semifinal 2
+        ordem.verify(round).executarBatalha(t1, t3);   // final: os dois vencedores
+        verify(round, times(3)).executarBatalha(any(Treinador.class), any(Treinador.class));
+        verify(repositorio, times(3)).salvarResultado(any(ResultadoBatalha.class));
+    }
+
+    // ---------------- Outros testes do torneio ----------------
+
+    @Test
+    public void testTorneioDeOitoTreinadoresTemSeteBatalhas() {
+        List<Treinador> inscritos = List.of(
+                criarTreinador("T1"), criarTreinador("T2"), criarTreinador("T3"), criarTreinador("T4"),
+                criarTreinador("T5"), criarTreinador("T6"), criarTreinador("T7"), criarTreinador("T8"));
+        when(round.executarBatalha(any(Treinador.class), any(Treinador.class))).thenAnswer(invocacao -> {
+            Treinador perdedor = invocacao.getArgument(1);
+            perdedor.getPokemon().setHp(0);
+            return 2;
+        });
+
+        Treinador campeao = torneio.executarTorneio(inscritos);
+
+        assertSame(inscritos.get(0), campeao);
+        verify(round, times(7)).executarBatalha(any(Treinador.class), any(Treinador.class));
     }
 
     @Test
-    void requisitoAutoralBonusCalculadoPorColaboradorEValorNegativoNaoReduzAtaque() {
-        when(gerador.checarAcerto(anyInt())).thenReturn(true);
-        when(gerador.checarCritico()).thenReturn(false);
-        when(calculadoraBonus.calcularBonusXp(1, 1)).thenReturn(5, -3);
-        Treinador jogador1 = new Treinador("J1", pokemon("F1", 100, 40, Tipos.FOGO, 50, 100));
-        Treinador bot1 = new Treinador("B1", pokemon("P1", 10, 50, Tipos.PLANTA, 10, 10));
-        Torneio torneio1 = new Torneio(jogador1, null, new Round(null, gerador, null), null,
-                null, null, calculadoraBonus);
-        torneio1.executarBatalha(jogador1, bot1);
-        assertEquals(105, jogador1.getPokemon().getAtk());
+    public void testTorneioRejeitaQuantidadeInvalidaDeTreinadores() {
+        List<Treinador> tresTreinadores = List.of(criarTreinador("A"), criarTreinador("B"), criarTreinador("C"));
 
-        Treinador jogador2 = new Treinador("J2", pokemon("F2", 100, 40, Tipos.FOGO, 50, 100));
-        Treinador bot2 = new Treinador("B2", pokemon("P2", 10, 50, Tipos.PLANTA, 10, 10));
-        Torneio torneio2 = new Torneio(jogador2, null, new Round(null, gerador, null), null,
-                null, null, calculadoraBonus);
-        torneio2.executarBatalha(jogador2, bot2);
-        assertEquals(100, jogador2.getPokemon().getAtk());
-        verify(calculadoraBonus, times(2)).calcularBonusXp(1, 1);
+        assertThrows(IllegalArgumentException.class, () -> torneio.executarTorneio(tresTreinadores));
+
+        verify(round, never()).executarBatalha(any(Treinador.class), any(Treinador.class));
+    }
+
+    @Test
+    public void testNoLimiteDeTurnosVenceQuemTemMaisHp() {
+        Treinador ana = criarTreinador("Ana");
+        Treinador bruno = criarTreinador("Bruno");
+        bruno.getPokemon().setHp(30);
+        when(round.executarBatalha(ana, bruno)).thenReturn(50);   // ninguém caiu
+
+        assertSame(ana, torneio.executarBatalha(ana, bruno));
+        verify(repositorio).salvarResultado(any(ResultadoBatalha.class));
+    }
+
+    @Test
+    public void testEmpateNoLimiteDeTurnosVenceOPrimeiroTreinador() {
+        Treinador ana = criarTreinador("Ana");
+        Treinador bruno = criarTreinador("Bruno");
+        when(round.executarBatalha(ana, bruno)).thenReturn(50);
+
+        assertSame(ana, torneio.executarBatalha(ana, bruno));
+    }
+
+    // ---------------- Requisito autoral 1: conquista "vitória perfeita" ----------------
+    // Colaborador mockado: ServicoNotificacao
+
+    @Test
+    public void testNotificaConquistaQuandoJogadorVenceSemUsarItens() {
+        Treinador jogador = criarTreinador("Ana");
+        Treinador bot = criarTreinador("Bot");
+        primeiroVence(jogador, bot, 4);
+
+        criarTorneioComJogador(jogador).executarBatalha(jogador, bot);
+
+        verify(notificacao, times(1)).notificarConquista("Ana", Torneio.CONQUISTA_VITORIA_PERFEITA);
+    }
+
+    @Test
+    public void testNaoNotificaConquistaQuandoJogadorUsouItem() {
+        Treinador jogador = criarTreinador("Ana");
+        Treinador bot = criarTreinador("Bot");
+        jogador.usarItem(Item.POTION);
+        primeiroVence(jogador, bot, 4);
+
+        criarTorneioComJogador(jogador).executarBatalha(jogador, bot);
+
+        verify(notificacao, never()).notificarConquista(anyString(), anyString());
+    }
+
+    @Test
+    public void testNaoNotificaConquistaQuandoOBotVence() {
+        Treinador jogador = criarTreinador("Ana");
+        Treinador bot = criarTreinador("Bot");
+        primeiroVence(bot, jogador, 4);
+
+        criarTorneioComJogador(jogador).executarBatalha(bot, jogador);
+
+        verify(notificacao, never()).notificarConquista(anyString(), anyString());
+    }
+
+    // ---------------- Requisito autoral 2: bônus de ataque por vitória ----------------
+    // Colaborador mockado: CalculadoraBonus
+
+    @Test
+    public void testBonusDeAtaqueAplicadoAoJogadorVencedor() {
+        Treinador jogador = criarTreinador("Ana");
+        Treinador bot = criarTreinador("Bot");
+        jogador.getPokemon().setHp(10);
+        primeiroVence(jogador, bot, 4);
+        when(calculadoraBonus.calcularBonusAtaque(4)).thenReturn(5);
+
+        criarTorneioComJogador(jogador).executarBatalha(jogador, bot);
+
+        assertEquals(60, jogador.getPokemon().getAtk());   // 50 * 1.10 (fortalecer) + 5 de bônus
+        assertEquals(40, jogador.getPokemon().getHp());    // fortalecer() cura todo o HP
+    }
+
+    @Test
+    public void testBonusRecebeOsTurnosDaBatalha() {
+        Treinador jogador = criarTreinador("Ana");
+        Treinador bot = criarTreinador("Bot");
+        primeiroVence(jogador, bot, 7);
+
+        criarTorneioComJogador(jogador).executarBatalha(jogador, bot);
+
+        ArgumentCaptor<Integer> turnos = ArgumentCaptor.forClass(Integer.class);
+        verify(calculadoraBonus).calcularBonusAtaque(turnos.capture());
+        assertEquals(7, turnos.getValue());
+    }
+
+    @Test
+    public void testBonusNaoEAplicadoQuandoJogadorPerde() {
+        Treinador jogador = criarTreinador("Ana");
+        Treinador bot = criarTreinador("Bot");
+        primeiroVence(bot, jogador, 4);
+
+        criarTorneioComJogador(jogador).executarBatalha(bot, jogador);
+
+        verify(calculadoraBonus, never()).calcularBonusAtaque(anyInt());
+        assertEquals(50, jogador.getPokemon().getAtk());
     }
 }
-
-

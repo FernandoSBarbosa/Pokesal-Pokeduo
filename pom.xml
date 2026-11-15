@@ -67,10 +67,11 @@
                         </goals>
                         <configuration>
                             <excludes>
-                                <!-- Exclui a classe interativa com main/Scanner do relatório -->
+                                <!-- Classe interativa (main/Scanner) e implementações de console:
+                                     são infraestrutura de entrada/saída, não regras de negócio -->
                                 <exclude>BatalhaPokemon.class</exclude>
-                                <!-- Implementações de console são infraestrutura, não regras de negócio -->
-                                <exclude>BatalhaPokemon$*.class</exclude>
+                                <exclude>RegistroBatalhaConsole.class</exclude>
+                                <exclude>ServicoNotificacaoConsole.class</exclude>
                             </excludes>
                         </configuration>
                     </execution>

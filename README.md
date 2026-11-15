@@ -1,43 +1,38 @@
-# Pokeduo
+# PokeSal - Pokeduo
 
-Paródia de Pokémon em Java, feita como projeto de faculdade. Dois treinadores escolhem um Pokesal e batalham por turnos até que um seja derrotado.
+Paródia de Pokémon em Java (projeto de faculdade). Demonstração: [vídeo no YouTube](https://youtu.be/FeZLaXlMq1c?si=0JsFalrapc4QwXlC)
 
 ## Modos de jogo
 
-- **Batalha contra outro jogador**: dois treinadores, cada um escolhe seu Pokesal e batalham, podendo atacar ou usar itens (Poção, Super-Poção, Antídoto).
-- **Torneio contra bots**: o jogador enfrenta 5 bots em sequência, com dificuldade crescente. A cada vitória, o Pokémon do jogador recebe um reforço permanente em ataque, defesa, velocidade e um pouco de cura.
+- **Batalha entre dois jogadores**: cada treinador escolhe um Pokesal e, a cada turno, ataca ou usa um item
+  (Poção, Super poção ou Antídoto; no máximo 2 por batalha). Usar item consome o turno.
+- **Torneio eliminatório**: o jogador enfrenta bots em chaves de 4 ou 8 treinadores. Os bots ficam mais fortes
+  a cada nível. Quando o jogador vence, seu Pokémon é fortalecido e ganha um bônus de ataque; se vencer sem
+  usar itens, ganha uma conquista.
 
 ## Como jogar
 
 1. Execute a classe `BatalhaPokemon`.
-2. Informe seu nome e escolha um Pokesal.
-3. Escolha o modo de jogo (batalha simples ou torneio).
-4. A batalha segue até que um dos lados perca.
+2. Escolha o modo (1 ou 2) e siga as instruções na tela.
 
-## Classes principais
+## Como rodar os testes e a cobertura
 
-- `Pokemon`, `Treinador`, `Round`, `Estacionamento`: lógica de batalha, dano e terreno.
-- `PokemonDex`: lista dos seis Pokesal disponíveis.
-- `GeradorBots` e `Torneio`: geram os bots e conduzem o modo Torneio.
+```
+mvn clean test
+```
 
-# Meu Projeto
+O relatório do JaCoCo fica em `target/site/jacoco/index.html`.
 
-Confira a demonstração do projeto no link abaixo:
+## Estrutura (Fase 03 - Inversão de Dependência)
 
-[Assistir ao vídeo no YouTube](https://youtu.be/FeZLaXlMq1c?si=0JsFalrapc4QwXlC)
+As classes de regra de negócio não criam seus colaboradores: recebem tudo pelo construtor.
+Só a classe `BatalhaPokemon` (main) cria os objetos e liga as peças.
 
-# PokeSal - Fase 03
+| Regra de negócio | Interface recebida | Implementação |
+| :--- | :--- | :--- |
+| `Round` | `GeradorAleatorio`, `RegistroBatalha` | `GeradorAleatorioReal`, `RegistroBatalhaConsole` |
+| `Estacionamento` | `ServicoTerreno` | `ServicoTerrenoPadrao` (usa `java.time.Clock`) |
+| `Torneio` | `RepositorioResultados`, `ServicoNotificacao`, `CalculadoraBonus` | `RepositorioResultadosMemoria`, `ServicoNotificacaoConsole`, `CalculadoraBonusPadrao` |
+| `GeradorBots` | `GeradorAleatorio` | `GeradorAleatorioReal` |
 
-Projeto refatorado com o Princípio da Inversão de Dependência (DIP), testes unitários e análise estática de código.
-
-## 📊 Métricas do Projeto
-
-| Métrica | Ferramenta | Resultado | Meta |
-| :--- | :--- | :---: | :---: |
-| **Cobertura de Instruções** | JaCoCo | **91%** | $\ge 80\%$ |
-| **Cobertura de Ramos** | JaCoCo | **84%** | $\ge 70\%$ |
-| **Segurança** | SonarCloud | **Nota A** | Nota A |
-| **Manutenibilidade** | SonarCloud | **Nota A** | Nota A |
-| **Duplicação** | SonarCloud | **0.0%** | $< 3\%$ |
-
----
+Documentação da Fase 03: pasta `Arquivos fase 3` (diagramas, relatório de refatoração, matriz de rastreabilidade).

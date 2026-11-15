@@ -1,50 +1,67 @@
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.when;
 
-class EstacionamentoTest {
+/** O Estacionamento é testado isolado: o ServicoTerreno é mockado. */
+@ExtendWith(MockitoExtension.class)
+public class EstacionamentoTest {
+
+    @Mock
+    private ServicoTerreno servicoTerreno;
+    @InjectMocks
+    private Estacionamento estacionamento;
+
     @Test
-    void delegaMultiplicadorAoServicoInjetado() {
-        ServicoTerreno servico = mock(ServicoTerreno.class);
-        when(servico.obterMultiplicador(Tipos.AGUA, TiposTerreno.CHUVA)).thenReturn(1.10);
-        Estacionamento estacionamento = new Estacionamento(TiposTerreno.CHUVA, servico);
+    public void testBonusDeFogoSoNoAsfaltoQuente() {
+        when(servicoTerreno.obterTerreno()).thenReturn(TiposTerreno.DIA);
+
+        assertEquals(1.15, estacionamento.multiplicadorTerreno(Tipos.FOGO), 0.001);
+        assertEquals(1.0, estacionamento.multiplicadorTerreno(Tipos.AGUA), 0.001);
+    }
+
+    @Test
+    public void testBonusDeAguaSoNaChuva() {
+        when(servicoTerreno.obterTerreno()).thenReturn(TiposTerreno.CHUVA);
 
         assertEquals(1.10, estacionamento.multiplicadorTerreno(Tipos.AGUA), 0.001);
-        verify(servico).obterMultiplicador(Tipos.AGUA, TiposTerreno.CHUVA);
+        assertEquals(1.0, estacionamento.multiplicadorTerreno(Tipos.FOGO), 0.001);
     }
 
     @Test
-    void compatibilidadeSemServicoAplicaSomenteRegrasFixasConhecidas() {
-        assertEquals(1.15, new Estacionamento(TiposTerreno.DIA).multiplicadorTerreno(Tipos.FOGO));
-        assertEquals(1.10, new Estacionamento(TiposTerreno.CHUVA).multiplicadorTerreno(Tipos.AGUA));
-        assertEquals(1.0, new Estacionamento(TiposTerreno.NORMAL).multiplicadorTerreno(Tipos.FOGO));
-        assertEquals(1.0, new Estacionamento(TiposTerreno.CANTEIRO).multiplicadorTerreno(Tipos.PLANTA));
+    public void testCanteiroCuraPlantaEmCincoPorCentoDoHpMaximo() {
+        when(servicoTerreno.obterTerreno()).thenReturn(TiposTerreno.CANTEIRO);
+        Pokemon planta = new Pokemon("Bulbasal", 49, 49, Tipos.PLANTA, 45, 100, Status.NORMAL);
+        planta.setHp(50);
+
+        assertTrue(estacionamento.curaCanteiro(planta));
+        assertEquals(55, planta.getHp());
     }
 
     @Test
-    void curaCanteiroLimitaHpMaximoENaoCuraOutrosTipos() {
-        Estacionamento estacionamento = new Estacionamento(TiposTerreno.CANTEIRO,
-                new ServicoTerreno(java.time.Clock.systemUTC()));
-        Pokemon plantaQuaseCheia = new Pokemon("Planta", 1, 1, Tipos.PLANTA, 1, 100);
-        Pokemon agua = new Pokemon("Agua", 1, 1, Tipos.AGUA, 1, 100);
-        plantaQuaseCheia.setHp(99);
-        agua.setHp(50);
+    public void testCanteiroNaoCuraOutrosTiposNemPlantaComHpCheio() {
+        when(servicoTerreno.obterTerreno()).thenReturn(TiposTerreno.CANTEIRO);
+        Pokemon fogo = new Pokemon("CharSal", 52, 43, Tipos.FOGO, 65, 100, Status.NORMAL);
+        fogo.setHp(50);
+        Pokemon plantaCheia = new Pokemon("Bulbasal", 49, 49, Tipos.PLANTA, 45, 100, Status.NORMAL);
 
-        estacionamento.curaCanteiro(plantaQuaseCheia);
-        estacionamento.curaCanteiro(agua);
-        assertEquals(100, plantaQuaseCheia.getHp());
-        assertEquals(50, agua.getHp());
-        assertThrows(IllegalArgumentException.class, () -> estacionamento.curaCanteiro(null));
+        assertFalse(estacionamento.curaCanteiro(fogo));
+        assertEquals(50, fogo.getHp());
+        assertFalse(estacionamento.curaCanteiro(plantaCheia));
+        assertEquals(100, plantaCheia.getHp());
     }
 
     @Test
-    void rejeitaTerrenoOuTipoNulo() {
-        ServicoTerreno servico = new ServicoTerreno(java.time.Clock.systemUTC());
-        assertThrows(IllegalArgumentException.class, () -> new Estacionamento(null, servico));
-        assertThrows(IllegalArgumentException.class, () -> new Estacionamento(TiposTerreno.NORMAL, null));
-        Estacionamento estacionamento = new Estacionamento(TiposTerreno.NORMAL, servico);
-        assertThrows(IllegalArgumentException.class, () -> estacionamento.setTerrenoAtual(null));
-        assertThrows(IllegalArgumentException.class, () -> estacionamento.multiplicadorTerreno(null));
+    public void testTerrenoNormalNaoDaEfeito() {
+        when(servicoTerreno.obterTerreno()).thenReturn(TiposTerreno.NORMAL);
+        Pokemon planta = new Pokemon("Bulbasal", 49, 49, Tipos.PLANTA, 45, 100, Status.NORMAL);
+        planta.setHp(50);
+
+        assertEquals(1.0, estacionamento.multiplicadorTerreno(Tipos.FOGO), 0.001);
+        assertFalse(estacionamento.curaCanteiro(planta));
     }
 }

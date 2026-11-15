@@ -4,112 +4,139 @@ import java.util.List;
 import java.util.Scanner;
 
 public class BatalhaPokemon {
-
-    // Implementação utilitária para exibição de eventos no console
-    private static class ConsoleRegistroBatalha implements RegistroBatalha {
-        @Override
-        public void registrarAtaque(String atacante, String defensor) {
-            System.out.println("⚔️ " + atacante + " atacou " + defensor + "!");
-        }
-        @Override
-        public void registrarDano(String defensor, double dano, boolean eCritico) {
-            if (dano == 0) System.out.println("🛡️ O ataque errou!");
-            else System.out.printf("💥 Dano causado a %s: %.1f %s\n", defensor, dano, (eCritico ? "(CRÍTICO!)" : ""));
-        }
-        @Override
-        public void registrarEfeitoStatus(String pokemon, Status status) {
-            System.out.println("⚡ Efeito de Status de " + pokemon + ": " + status);
-        }
-        @Override
-        public void registrarEfeitoTerreno(String pokemon, TiposTerreno terreno) {
-            System.out.println("🌱 Terreno " + terreno + " afetando " + pokemon);
-        }
-        @Override
-        public void registrarUsoItem(String treinador, Item item) {
-            System.out.println("🧪 " + treinador + " usou o item " + item);
-        }
-    }
-
-    private static class RepositorioEmMemoria implements RepositorioResultados {
-        @Override
-        public void salvarResultado(ResultadoBatalha resultado) {
-            System.out.println("💾 [BD] Resultado Gravado: " + resultado.getVencedor() + " venceu " +
-                    resultado.getPerdedor() + " em " + resultado.getTurnos() + " turnos.");
-        }
-    }
+    private static final int MODO_BATALHA = 1;
+    private static final int MODO_TORNEIO = 2;
+    private static final int ACAO_ATACAR = 1;
+    private static final int ACAO_ITEM = 2;
+    private static final int TORNEIO_PEQUENO = 4;
+    private static final int TORNEIO_GRANDE = 8;
+    private static final int CHANCE_CHUVA = 4;
 
     public static void main(String[] args) {
-        Scanner scanner = new Scanner(System.in);
-        Clock clock = Clock.systemDefaultZone();
-        ServicoTerreno servicoTerreno = new ServicoTerreno(clock);
-        Estacionamento estacionamento = new Estacionamento(TiposTerreno.ASFALTO_QUENTE, servicoTerreno);
-        GeradorAleatorio gerador = new GeradorAleatorioReal();
-        RegistroBatalha registro = new ConsoleRegistroBatalha();
-        RepositorioResultados repositorio = new RepositorioEmMemoria();
+        Scanner sc = new Scanner(System.in);
 
-        Round round = new Round(estacionamento, gerador, registro);
-        GeradorBots geradorBots = new GeradorBots(gerador);
+        // Único lugar onde os colaboradores são criados (injeção de dependências).
+        GeradorAleatorio gerador = new GeradorAleatorioReal();
+        boolean chovendo = gerador.proximoInt(CHANCE_CHUVA) == 0;
+        ServicoTerreno servicoTerreno = new ServicoTerrenoPadrao(Clock.systemDefaultZone(), chovendo);
+        Estacionamento estacionamento = new Estacionamento(servicoTerreno);
+        Round round = new Round(estacionamento, gerador, new RegistroBatalhaConsole());
 
         System.out.println("=== POKESAL - FASE 03 ===");
-        System.out.println("1 - Batalha 1v1 (Jogador vs Jogador)");
-        System.out.println("2 - Torneio Eliminatório (4 ou 8 Treinadores)");
-        System.out.print("Escolha uma opção: ");
+        System.out.println("Terreno de hoje: " + estacionamento.getTerrenoAtual());
+        System.out.println("1 - Batalha entre dois jogadores");
+        System.out.println("2 - Torneio eliminatório (4 ou 8 treinadores)");
+        int modo = lerInteiro(sc, "Escolha o modo: ", MODO_BATALHA, MODO_TORNEIO);
 
-        int opcao = lerInteiro(scanner, 1, 2, "Escolha 1 ou 2: ");
-
-        if (opcao == 1) {
-            Pokemon p1 = new Pokemon("CharSal", 50, 40, Tipos.FOGO, 60, 100);
-            Pokemon p2 = new Pokemon("BulbaSal", 40, 50, Tipos.PLANTA, 40, 100);
-
-            Treinador t1 = new Treinador("Treinador 1", p1);
-            Treinador t2 = new Treinador("Treinador 2", p2);
-            t1.setRegistroBatalha(registro);
-            t2.setRegistroBatalha(registro);
-
-            System.out.println("\n--- MODO 1: BATALHA INTERATIVA ---");
-            t1.usarItem(Item.POTION);
-
-            Pokemon vencedor = round.executarBatalha(p1, p2);
-            if (vencedor == null) System.out.println("\nA batalha terminou empatada após o limite de turnos.");
-            else System.out.println("\nVencedor: " + vencedor.getNome());
-
-        } else if (opcao == 2) {
-            System.out.print("Quantidade de treinadores (4 ou 8): ");
-            int quantidade = lerQuantidadeTorneio(scanner);
-            List<Treinador> inscritos = new ArrayList<>();
-            for (int i = 1; i <= quantidade; i++) {
-                inscritos.add(geradorBots.criarBot("Bot_" + i));
-            }
-
-            Torneio torneio = new Torneio(null, estacionamento, round, geradorBots, repositorio, null, null);
-            Treinador campeao = torneio.executarTorneio(inscritos);
-
-            System.out.println("\n==========================================");
-            System.out.println(" 🏆 CAMPEÃO DO TORNEIO: " + campeao.getNome());
-            System.out.println("==========================================");
+        if (modo == MODO_BATALHA) {
+            batalhaEntreJogadores(sc, round);
         } else {
-            System.out.println("Opção inválida.");
+            torneio(sc, round, new GeradorBots(gerador));
         }
-
-        scanner.close();
+        sc.close();
     }
 
-    private static int lerQuantidadeTorneio(Scanner scanner) {
-        while (true) {
-            String entrada = scanner.nextLine().trim();
-            if (entrada.equals("4") || entrada.equals("8")) return Integer.parseInt(entrada);
-            System.out.print("Informe 4 ou 8: ");
+    private static void batalhaEntreJogadores(Scanner sc, Round round) {
+        Treinador t1 = criarTreinador(sc, "Primeiro treinador");
+        Treinador t2 = criarTreinador(sc, "Segundo treinador");
+
+        int turno = 1;
+        while (t1.getPokemon().isVivo() && t2.getPokemon().isVivo()) {
+            System.out.println("\n===== TURNO " + turno + " =====");
+            mostrarHp(t1);
+            mostrarHp(t2);
+            Item item1 = escolherAcao(sc, t1);
+            Item item2 = escolherAcao(sc, t2);
+            round.executarTurno(t1, item1, t2, item2);
+            turno++;
+        }
+
+        System.out.println("\n=== FIM DA BATALHA ===");
+        if (t1.getPokemon().isVivo()) {
+            System.out.println("Vencedor: " + t1.getNome());
+        } else if (t2.getPokemon().isVivo()) {
+            System.out.println("Vencedor: " + t2.getNome());
+        } else {
+            System.out.println("Empate: os dois Pokésal caíram no mesmo turno.");
         }
     }
 
-    private static int lerInteiro(Scanner scanner, int minimo, int maximo, String mensagemErro) {
+    private static void torneio(Scanner sc, Round round, GeradorBots geradorBots) {
+        Treinador jogador = criarTreinador(sc, "Treinador");
+        int total = 0;
+        while (total != TORNEIO_PEQUENO && total != TORNEIO_GRANDE) {
+            total = lerInteiro(sc, "Quantidade de treinadores (4 ou 8): ", TORNEIO_PEQUENO, TORNEIO_GRANDE);
+        }
+
+        List<Treinador> inscritos = new ArrayList<>();
+        inscritos.add(jogador);
+        for (int nivel = 1; nivel < total; nivel++) {
+            inscritos.add(geradorBots.gerarBot(nivel));
+        }
+
+        RepositorioResultadosMemoria repositorio = new RepositorioResultadosMemoria();
+        Torneio torneio = new Torneio(jogador, round, repositorio,
+                new ServicoNotificacaoConsole(), new CalculadoraBonusPadrao());
+        Treinador campeao = torneio.executarTorneio(inscritos);
+
+        System.out.println("\n=== RESULTADOS DAS BATALHAS ===");
+        for (ResultadoBatalha r : repositorio.listar()) {
+            System.out.println(r.getVencedor() + " (" + r.getPokesalVencedor() + ") venceu "
+                    + r.getPerdedor() + " (" + r.getPokesalPerdedor() + ") em " + r.getTurnos() + " turnos");
+        }
+        System.out.println("\nCAMPEÃO DO TORNEIO: " + campeao.getNome());
+    }
+
+    private static Treinador criarTreinador(Scanner sc, String rotulo) {
+        System.out.print(rotulo + ", informe seu nome: ");
+        String nome = sc.nextLine().trim();
+        return new Treinador(nome, escolherPokemon(sc, nome));
+    }
+
+    private static Pokemon escolherPokemon(Scanner sc, String nome) {
+        List<Pokemon> pokesal = PokemonDex.getTodos();
+        System.out.println(nome + ", escolha seu pokesal:");
+        for (int i = 0; i < pokesal.size(); i++) {
+            System.out.println((i + 1) + " - " + pokesal.get(i).getNome() + " (" + pokesal.get(i).getTipo() + ")");
+        }
+        int escolha = lerInteiro(sc, "Opção: ", 1, pokesal.size());
+        return pokesal.get(escolha - 1);
+    }
+
+    // Retorna o item escolhido, ou null se o treinador decidiu atacar.
+    private static Item escolherAcao(Scanner sc, Treinador treinador) {
+        System.out.println("\nAção de " + treinador.getNome() + ": 1 - Atacar | 2 - Usar item");
+        int acao = lerInteiro(sc, "Opção: ", ACAO_ATACAR, ACAO_ITEM);
+        if (acao == ACAO_ATACAR) {
+            return null;
+        }
+        if (!treinador.podeUsarItem()) {
+            System.out.println("Você já usou os 2 itens permitidos. Vai atacar!");
+            return null;
+        }
+        System.out.println("1 - Poção | 2 - Super poção | 3 - Antídoto");
+        int item = lerInteiro(sc, "Item: ", 1, Item.values().length);
+        return Item.values()[item - 1];
+    }
+
+    private static void mostrarHp(Treinador t) {
+        System.out.println(t.getNome() + " - " + t.getPokemon().getNome()
+                + " HP: " + t.getPokemon().getHp() + "/" + t.getPokemon().getMaxHP());
+    }
+
+    private static int lerInteiro(Scanner sc, String mensagem, int minimo, int maximo) {
         while (true) {
-            String entrada = scanner.nextLine().trim();
+            System.out.print(mensagem);
+            String entrada = sc.nextLine().trim();
             try {
                 int valor = Integer.parseInt(entrada);
-                if (valor >= minimo && valor <= maximo) return valor;
-            } catch (NumberFormatException ignored) { }
-            System.out.print(mensagemErro);
+                if (valor >= minimo && valor <= maximo) {
+                    return valor;
+                }
+            } catch (NumberFormatException e) {
+                // cai na mensagem abaixo
+            }
+            System.out.println("Valor inválido. Digite um número de " + minimo + " a " + maximo + ".");
         }
     }
 }

@@ -1,54 +1,73 @@
-# Rastreabilidade, justificativa dos mocks e registro de bugs — Fase 03
+# Matriz de Rastreabilidade, Justificativa dos Mocks e Registro de Bugs - Fase 03
 
-**Projeto:** PokeSal / Pokeduo  
-**Data da última execução registrada:** 07/11/2026  
-**Validação registrada:** `mvn clean test` — 38 testes, 0 falhas, 0 erros. JaCoCo: 93,5% de linhas e 76,5% de branches.
-
-> Este documento descreve o estado observado no projeto após as correções. A equipe deve conferir os resultados ao repetir a execução e completar os números dos commits depois de registrar as alterações no Git.
+Resultado da última execução (`mvn clean test`): **54 testes, 0 falhas**. Cobertura medida pelo JaCoCo nas classes de regra de negócio: **97,8% de linhas e 87,9% de branches** (metas: 80% e 70%). Preencher aqui os números finais do relatório do JaCoCo gerado na máquina da equipe.
 
 ## 1. Matriz de rastreabilidade
 
-| Requisito | Casos de teste | Colaboradores mockados | Resultado esperado | Resultado obtido |
-|---|---|---|---|---|
-| R03-01 — O golpe pode errar; dano zero e HP do alvo permanece igual. | `TorneioTest.testGolpeErraQuandoPrecisaoFalha` | `GeradorAleatorio`, `RegistroBatalha` | `checarAcerto` retorna falso; dano zero e nenhum crítico consultado. | Passou na última execução da suíte. |
-| R03-02 — Golpe crítico multiplica o dano por 1,5; chance no gerador real é 6,25%. | `TorneioTest.testAcertoCriticoComGeradorMockado`; `GeradorAleatorioRealTest.chanceCriticaRetornaBooleano` | `GeradorAleatorio`, no teste unitário do `Round` | Mock força crítico para validar o multiplicador; teste concreto executa o gerador real. | Passou na última execução da suíte. |
-| R03-03 — Asfalto quente depende do horário; chuva favorece Água. | `TorneioTest.testAsfaltoQuenteApenasDuranteDia`; `RoundTest.testEfeitoTerrenoEstacionamentoUCSal` | `ServicoTerreno` é mockado para verificar a delegação; `Clock` fixo é usado nos cenários dia/noite. | Multiplicador de fogo durante o dia e neutro à noite; chuva com multiplicador de Água. | Passou na última execução da suíte. |
-| R03-04 — Eventos do turno devem ser registrados nesta ordem: ataque, dano, status, terreno e item. | `TorneioTest.testSequenciaDeEventosNoTurno`; `RoundCoverageTest.aplicaDanoContinuoAQueimadoEEnvenenadoESkipParaStatusNormalOuNocauteado` | `RegistroBatalha`, `GeradorAleatorio` | `InOrder` confirma ataque/dano, seguido de status e terreno no turno. O uso de item deve ser registrado por `Treinador`. | Passou para os eventos orquestrados por `Round`. O registro de item ocorre separadamente em `Treinador.usarItem`; a aplicação não integra o uso de item ao mesmo ciclo de `simularRound`, portanto a ordem conjunta depende de quando o item é acionado. |
-| R03-05 — Torneio eliminatório aceita 4 ou 8 participantes e avança vencedores. | `TorneioTest.testChaveamentoTorneioAvancaVencedores`; `TorneioCoverageTest.validaDependenciasInscricoesEArgumentosDaBatalha`; `TorneioCoverageTest.rejeitaListaComTreinadorNulo` | `Round` | Vencedores avançam; listas inválidas e duplicadas são rejeitadas. | Passou na última execução da suíte. |
-| R03-06 — Resultado da batalha contém vencedor, perdedor, turnos e Pokesal. | `TorneioTest.testResultadoSalvoAoFimDaBatalha` | `RepositorioResultados`; `Round` real com gerador mockado | Captura do `ResultadoBatalha` confirma os campos registrados. | Passou na última execução da suíte. |
-| R03-07 — Falha no repositório não invalida a batalha; resultado não é salvo antes da conclusão. | `TorneioTest.testFalhaNoRepositorioNaoInvalidaBatalha`; `TorneioTest.testRepositorioNaoChamadoSeBatalhaNaoTerminou` | `RepositorioResultados`; `Round` mockado no caso não concluído | Exceção é simulada com `doThrow`; vencedor permanece definido. No empate/limite sem vencedor, repositório não é chamado. | Passou na última execução da suíte. |
-| RA-01 — Vitória do jogador sem itens solicita notificação de conquista; usando item, não notifica. | `TorneioTest.testNotificacaoSemItensEAumentoDeAtributo`; `TorneioTest.requisitoAutoralNotificaConquistaApenasQuandoJogadorVenceSemItens`; `TorneioCoverageTest.vencedorSegundoParticipanteTambemPodeReceberConquistaEBonus` | `ServicoNotificacao`; `Round`/`GeradorAleatorio` nos testes de integração unitária | Notifica uma vez apenas na vitória do jogador sem itens. | Passou na última execução da suíte. |
-| RA-02 — Vitória do jogador consulta o colaborador de bônus; bônus positivo é aplicado e negativo não reduz ataque. | `TorneioTest.testNotificacaoSemItensEAumentoDeAtributo`; `TorneioTest.requisitoAutoralBonusCalculadoPorColaboradorEValorNegativoNaoReduzAtaque`; `TorneioCoverageTest.vencedorSegundoParticipanteTambemPodeReceberConquistaEBonus` | `CalculadoraBonus`; `Round`/`GeradorAleatorio` nos testes de integração unitária | Usa o valor mockado após vitória; bônus negativo é limitado a zero. | Passou na última execução da suíte. |
-| R03-08 — Geração dos Pokesals da Pokédex e aleatoriedade respeitam seus contratos. | `PokemonDexTest.retornaSeisPokemonComTiposENomesEsperados`; `GeradorAleatorioRealTest.geraValoresDentroDosLimitesERespeitaPrecisao`; `GeradorAleatorioRealTest.rejeitaIntervalosInvalidos` | Nenhum mock nos testes das implementações concretas. | Pokédex contém seis entradas; valores aleatórios respeitam limites e entradas inválidas são rejeitadas. | Passou na última execução da suíte. |
+| Requisito | Caso de teste (classe) | Colaboradores mockados | Resultado esperado | Obtido |
+| :--- | :--- | :--- | :--- | :---: |
+| 2.1 Golpe erra e causa dano zero | `testGolpeErraQuandoPrecisaoFalha` (RoundMockTest) | Estacionamento, GeradorAleatorio, RegistroBatalha | Dano 0.0, HP do alvo inalterado, sem sorteio de crítico | Passou |
+| 2.1 Crítico multiplica o dano por 1.5 | `testAcertoCriticoComGeradorMockado` (RoundMockTest) | Estacionamento, GeradorAleatorio, RegistroBatalha | Dano 24.0 (16.0 x 1.5), HP 76 | Passou |
+| 2.1 Limite do crítico (6,25%) | `testAcertoSemCriticoCausaDanoNormal` (RoundMockTest) | idem | 0.0625 não é crítico: dano 16.0 | Passou |
+| 2.1 Precisão 100 sempre acerta | `testPrecisaoMaximaAcertaMesmoComOMaiorSorteio` (RoundMockTest) | idem | Sorteio 99 acerta: dano 16.0 | Passou |
+| 2.2 Asfalto quente só de dia | `testAsfaltoQuenteApenasDuranteODia` (ServicoTerrenoPadraoTest) | Clock | 1.15 de dia, 1.0 à noite | Passou |
+| 2.2 Limites do horário de dia | `testTerrenoNosLimitesDoHorarioDeDia` (ServicoTerrenoPadraoTest) | Clock | 06:00 é dia, 18:00 é noite | Passou |
+| 2.2 Chuva tem prioridade | `testChuvaTemPrioridadeSobreOHorario` (ServicoTerrenoPadraoTest) | Clock | Terreno CHUVA sem consultar o relógio | Passou |
+| 2.2 Efeitos do terreno | 5 testes em `EstacionamentoTest` | ServicoTerreno | Bônus de fogo, de água, cura do canteiro | Passou |
+| 2.3 Resultado salvo ao fim da batalha | `testResultadoSalvoAoFimDaBatalha` (TorneioTest) | Round, RepositorioResultados | Salvo 1 vez com vencedor, perdedor, turnos e Pokésal | Passou |
+| 2.3 Falha no repositório | `testFalhaNoRepositorioNaoInvalidaBatalha` (TorneioTest) | Round, RepositorioResultados | Exceção no repositório; vencedor continua definido | Passou |
+| 2.3 Batalha não terminou | `testRepositorioNaoChamadoSeBatalhaNaoTerminou` (TorneioTest) | Round, RepositorioResultados | Round falha; repositório nunca chamado | Passou |
+| 2.3 Chaveamento de 4 e de 8 | `testChaveamentoTorneioAvancaVencedores`, `testTorneioDeOitoTreinadoresTemSeteBatalhas`, `testTorneioRejeitaQuantidadeInvalidaDeTreinadores` (TorneioTest) | Round, RepositorioResultados | Vencedores avançam na ordem; 3 e 7 batalhas; outro número é rejeitado | Passou |
+| 2.3 Decisão no limite de turnos | `testNoLimiteDeTurnosVenceQuemTemMaisHp`, `testEmpateNoLimiteDeTurnosVenceOPrimeiroTreinador` (TorneioTest) | Round, RepositorioResultados | Vence quem tem mais HP; empate vence o primeiro | Passou |
+| 2.4 Ordem dos eventos do turno | `testSequenciaDeEventosNoTurno` (RoundMockTest) | Estacionamento, GeradorAleatorio, RegistroBatalha | Ataque, dano, status, terreno e item, nessa ordem, e nada além | Passou |
+| Autoral 1: conquista vitória perfeita | `testNotificaConquistaQuandoJogadorVenceSemUsarItens`, `testNaoNotificaConquistaQuandoJogadorUsouItem`, `testNaoNotificaConquistaQuandoOBotVence` (TorneioTest) | Round, ServicoNotificacao | Notifica só quando o jogador vence sem itens | Passou |
+| Autoral 2: bônus de ataque | `testBonusDeAtaqueAplicadoAoJogadorVencedor`, `testBonusRecebeOsTurnosDaBatalha`, `testBonusNaoEAplicadoQuandoJogadorPerde` (TorneioTest) | Round, CalculadoraBonus | Atk 60 (50 x 1.10 + 5); recebe os turnos; sem bônus se perde | Passou |
+| Fase 02: vantagem elemental | `testVantagemElemental` (RoundTest) | (nenhum: usa mocks vazios) | 16.0 e 4.0 nas 6 combinações | Passou |
+| Fase 02: terreno do estacionamento | `testEfeitoTerrenoEstacionamentoUCSal` (RoundTest) | (nenhum) | 1.15, 1.10 e cura de 5 | Passou |
+| Fase 02: ordem por velocidade | `testOrdemDeAtaquePorVelocidade` (RoundTest) | (nenhum) | Mais rápido primeiro; empate: o primeiro | Passou |
+| Fase 02: limite de itens | `testUsoLimiteDeItensExcedido` (TreinadorTest) | (nenhum) | 3º uso lança IllegalStateException | Passou |
+| Fase 02: valores limite de dano | `testCalculoDanoBoundaryValues` (RoundTest) | (nenhum) | Defesa 0: infinito; ataque 0: 0.0 | Passou |
+| Autorais Fase 01: fortalecer e bots | `testFortalecer` (PokemonTest); 4 testes em `GeradorBotsTest` | GeradorAleatorio | +10% e cura total; +15% por nível | Passou |
 
-## 2. Justificativa dos mocks
+## 2. Recursos do Mockito usados
 
-| Colaborador | Por que foi mockado | Onde aparece |
-|---|---|---|
-| `GeradorAleatorio` | Controla acerto, erro, crítico e desempate por velocidade. O mock torna a sequência previsível e evita flutuação aleatória nos resultados. | `TorneioTest`, `RoundCoverageTest`. |
-| `RegistroBatalha` | Permite verificar quais eventos foram emitidos e a ordem em que ocorreram, sem acoplar os testes a saída de console ou armazenamento. | `TorneioTest`, `RoundCoverageTest`. |
-| `ServicoTerreno` | Permite verificar que `Estacionamento` delega o cálculo de terreno ao serviço e testar valores controlados. Para dia/noite também se usa `Clock.fixed`. | `TorneioTest`, `EstacionamentoTest`. |
-| `RepositorioResultados` | Permite capturar o objeto salvo e simular indisponibilidade com `doThrow`, sem banco real. | `TorneioTest`, `TorneioCoverageTest`. |
-| `ServicoNotificacao` | Permite verificar envio e ausência de envio da conquista sem integrar um serviço externo. | `TorneioTest`, `TorneioCoverageTest`. |
-| `CalculadoraBonus` | Permite controlar retorno positivo, negativo e sequencial, verificando a política do torneio sem depender de uma fórmula externa. | `TorneioTest`, `TorneioCoverageTest`. |
-| `Round` | É colaborador de `Torneio`; nos testes de orquestração é mockado para escolher deterministicamente o vencedor e número de turnos. | `TorneioTest`, `TorneioCoverageTest`. |
+| Recurso exigido | Onde aparece |
+| :--- | :--- |
+| `@Mock` e `@InjectMocks` | RoundMockTest, EstacionamentoTest, GeradorBotsTest, TorneioTest |
+| `when(...).thenReturn(...)` em sequência | `testSequenciaDeEventosNoTurno` (`curaCanteiro` retorna false e depois true); `testAsfaltoQuenteApenasDuranteODia` (relógio retorna dia e depois noite) |
+| `verify` com `times()`, `never()` e `atLeastOnce()` | TorneioTest, RoundMockTest, ServicoTerrenoPadraoTest |
+| `InOrder` | `testSequenciaDeEventosNoTurno`, `testChaveamentoTorneioAvancaVencedores` |
+| `ArgumentCaptor` | `testResultadoSalvoAoFimDaBatalha`, `testBonusRecebeOsTurnosDaBatalha` |
+| `thenThrow` e `doThrow` | `testRepositorioNaoChamadoSeBatalhaNaoTerminou` (`thenThrow`), `testFalhaNoRepositorioNaoInvalidaBatalha` (`doThrow`) |
+| Matchers `any()` e `eq()` | RoundMockTest e TorneioTest |
 
-**Objetos mantidos reais:** a classe sob teste em cada teste; `Pokemon` e `Treinador` para validar o estado de domínio; enums como `Tipos`, `Status` e `TiposTerreno`; `Tipos.multiplicadorContra`; `PokemonDex`; e `GeradorAleatorioReal` nos testes específicos de suas implementações. `Clock.fixed` é usado em vez do relógio corrente nos cenários temporais determinísticos.
+**Quando usar matcher e quando usar valor exato:** usamos valor exato quando o valor é o objetivo do teste (por exemplo, o dano 24.0 do crítico ou o nome "Ana" na conquista). Usamos `any()` quando o argumento não importa para aquela verificação (por exemplo, "alguma batalha foi disputada" ou "o repositório nunca foi chamado"). Quando um argumento usa matcher, todos os outros da mesma chamada também usam (por exemplo, `eq("Bulbasal")` junto com `anyDouble()`).
 
-## 3. Registro de bugs e correções
+## 3. Justificativa dos mocks
 
-| Bug | Como foi identificado | Correção aplicada | Evidência/teste | Commit |
-|---|---|---|---|---|
-| B03-01 — `ClassesBaseTest` usava construtores e tipos que não correspondiam às APIs (`Round`, `Pokemon`, repositório). | Compilação dos testes falhava com incompatibilidade de tipos/construtores e `salvarResultado(String)`. | Testes alinhados às assinaturas reais; resultado capturado como `ResultadoBatalha`. | Compilação dos testes e `TorneioTest.testResultadoSalvoAoFimDaBatalha`. | Pendente: alterações ainda sem commit. |
-| B03-02 — Expectativas antigas de dano não correspondiam à fórmula implementada (`(ataque / defesa) × 10 × vantagem × terreno × crítico`). | Falha de asserção nos valores de dano elemental. | Valores esperados atualizados conforme os atributos e multiplicadores usados em cada cenário. | `RoundTest.testVantagemElemental`. | Pendente: alterações ainda sem commit. |
-| B03-03 — Mock de `GeradorAleatorio` sem configuração fazia todos os golpes errarem, impedindo que as batalhas de teste tivessem vencedor. | Testes de torneio recebiam `null`, não salvavam resultado e não chamavam bônus/notificação. | Acerto e crítico configurados explicitamente nos casos que precisam de uma vitória determinística. | Testes de resultado, repositório, bônus e notificação em `TorneioTest`. | Pendente: alterações ainda sem commit. |
-| B03-04 — Teste de limite de itens tentava usar poção com HP máximo. | `Treinador.usarItem` rejeitava o primeiro uso sem efeito. | HP inicial reduzido para que duas poções sejam válidas antes de testar o limite de uso. | `TreinadorTest.testUsoLimiteDeItensExcedido`. | Pendente: alterações ainda sem commit. |
-| B03-05 — O gerador real aceitava precisão fora de 0–100 e intervalo de geração invertido. | Teste de contrato encontrou ausência de validação; a primeira execução de `mvn clean test` falhou neste caso. | `checarAcerto` valida a faixa e `gerarNumero` rejeita `min > max`. | `GeradorAleatorioRealTest.rejeitaIntervalosInvalidos`; suíte final com 38 testes passou. | Pendente: alterações ainda sem commit. |
-| B03-06 — A regra de notificação verificava itens usados pelo primeiro treinador, mesmo quando o jogador podia ser o segundo. | Revisão da condição no fluxo de vitória. | Condição alterada para consultar os itens do treinador vencedor. | `TorneioCoverageTest.vencedorSegundoParticipanteTambemPodeReceberConquistaEBonus`. | Pendente: alterações ainda sem commit. |
-| B03-07 — Classes auxiliares de console reduziam a métrica de cobertura das regras de negócio sem serem o foco da suíte unitária. | Relatório JaCoCo incluía implementações privadas aninhadas em `BatalhaPokemon`. | JaCoCo passou a excluir a classe interativa e suas classes auxiliares de console. | Execução final do JaCoCo: 93,5% de linhas e 76,5% de branches no conjunto reportado. | Pendente: alterações ainda sem commit. |
-| B03-08 — Ordem de registro de eventos de `Round` divergia da regra 2.4. | Inspeção de `Round.simularRound` e comparação com a regra 2.4 do PDF. | Efeitos de status e cura continuam sendo aplicados no início do turno, mas o registro de status/terreno é adiado até depois dos ataques e danos. | `TorneioTest.testSequenciaDeEventosNoTurno` agora verifica com `InOrder` ataques/danos, status e terreno. 38 testes passaram em `mvn clean test`. | Corrigido; commit ainda pendente. |
-| B03-09 — O uso de item é registrado diretamente por `Treinador` e não é orquestrado por `Round`. | Comparação do fluxo de `Treinador.usarItem` com a ordem global descrita na regra 2.4. | Não alterado nesta correção: o evento de item permanece no método de uso do item, fora do ciclo de `simularRound`. | `TreinadorTest.testUsoLimiteDeItensExcedido` cobre limite de uso, mas não uma ordem conjunta ataque/status/terreno/item. | Revisar se o fluxo do jogo precisa integrar itens ao mesmo turno; commit pendente caso alterado. |
+- **`GeradorAleatorio`**: mockado para controlar o sorteio e tornar o teste previsível (acerto, erro e crítico).
+- **`Estacionamento` (no teste do `Round`)**: mockado para isolar o `Round` do terreno; o próprio `Estacionamento` é testado à parte, com `ServicoTerreno` mockado.
+- **`ServicoTerreno` e `Clock`**: mockados para simular dia, noite e chuva sem depender do horário real.
+- **`RegistroBatalha`**: mockado porque o objetivo é verificar quais eventos foram enviados e em que ordem.
+- **`RepositorioResultados`**: mockado para capturar o que foi salvo e para simular falhas do banco.
+- **`Round` (no teste do `Torneio`)**: mockado para decidir o resultado das batalhas e testar só o chaveamento, o salvamento e as recompensas.
+- **`ServicoNotificacao` e `CalculadoraBonus`**: mockados porque são os colaboradores dos requisitos autorais.
 
-### Situação dos commits
+**O que não foi mockado:** a própria classe sob teste; `Pokemon`, `Treinador` e `Golpe`, que são dados simples cujo comportamento faz parte do que está sendo testado; a matriz de tipos (`Tipos`), que é regra pura e determinística; e `PokemonDex`, que só cria objetos.
 
-O `git status` do projeto mostra alterações locais e arquivos adicionados/removidos ainda não commitados. Nenhum hash foi informado ou criado nesta etapa. Após a equipe revisar o documento e criar os commits, substitua “Pendente: alterações ainda sem commit” pelo hash correspondente a cada conjunto de correções.
+## 4. Registro de bugs encontrados e corrigidos
+
+Preencher a coluna "Commit" com o hash do commit de cada correção.
+
+| Id | Bug | Como foi encontrado | Correção | Teste | Commit |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| B01 | O modo de batalha entre dois jogadores quebrava logo no início (poção em Pokémon com HP cheio gerava exceção) e não tinha escolha de ação | Execução do jogo | `Treinador` voltou a aceitar o item; o `main` pede a ação de cada treinador a cada turno | `testUsoLimiteDeItensExcedido` | |
+| B02 | A batalha podia nunca terminar se ninguém causasse dano | Revisão do código | Limite de 50 turnos no `Round` | `testBatalhaTerminaNoLimiteDeTurnosQuandoNinguemAcerta` | |
+| B03 | Efeitos de status e de terreno eram aplicados antes dos ataques, mas registrados depois | Revisão do código | Aplicados no fim do turno, na ordem dos eventos | `testSequenciaDeEventosNoTurno` | |
+| B04 | Queimado não reduzia o ATK e paralisado não reduzia a VEL | Revisão do código | Reduções restauradas, com piso de 1 | `testStatusReduzAtributosSemChegarAZero` | |
+| B05 | Poção ou cura do canteiro podiam reviver um Pokémon derrotado | Revisão do código | Item e terreno só valem para Pokémon vivo | `testItemNaoEUsadoPorPokemonDerrotado`, `testPokemonDerrotadoNaoUsaItem` | |
+| B06 | Torneio de 8 treinadores jogava só com os 4 primeiros | Execução com 8 inscritos | Chave genérica de 4 ou 8 | `testTorneioDeOitoTreinadoresTemSeteBatalhas` | |
+| B07 | Empate no limite de turnos derrubava o torneio com exceção | Revisão do código | Vence quem tem mais HP; empate vence o primeiro | `testNoLimiteDeTurnosVenceQuemTemMaisHp` | |
+| B08 | No torneio só bots lutavam, então os requisitos autorais nunca rodavam no jogo | Execução do jogo | O jogador participa e recebe as recompensas | `testNotificaConquistaQuandoJogadorVenceSemUsarItens` | |
+| B09 | A regra de dano e o desempate de velocidade tinham mudado em relação à Fase 02 | Comparação com os testes da Fase 02 | Fator de dano voltou a 8; empate vence o primeiro | `testVantagemElemental`, `testOrdemDeAtaquePorVelocidade` | |
+| B10 | `new Random()` criado a cada sorteio de bot (apontado pelo Sonar na Fase 02) | SonarQube | `GeradorBots` usa o `GeradorAleatorio` injetado | `testSortearBaseUsaOGeradorInjetado` | |

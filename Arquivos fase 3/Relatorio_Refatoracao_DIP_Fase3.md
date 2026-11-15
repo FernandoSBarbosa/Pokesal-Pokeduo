@@ -1,23 +1,30 @@
-# Relatório de Refatoração — Fase 03
+# Relatório de Refatoração - Fase 03
 
-## Objetivo
+## Por que refatorar
 
-A refatoração preparou a lógica de batalha e de torneio para ser testada de forma previsível e reduziu o acoplamento entre as regras de negócio e os serviços usados pelo sistema. As mudanças concentram-se em `Round`, `Estacionamento`, `ServicoTerreno`, `Torneio` e nas interfaces de colaboração.
+Na Fase 02 as regras de negócio criavam ou conheciam diretamente tudo de que precisavam: o sorteio (`new Random()` dentro do `GeradorBots`), o terreno (fixo dentro do `Estacionamento`) e a saída no console. Isso gerava **acoplamento forte** entre as classes: para testar o `Round` era preciso usar o terreno real e aceitar resultados aleatórios, o que torna os testes imprevisíveis. A Fase 03 acrescentou novas dependências (precisão e crítico, serviço de terreno com relógio, repositório de resultados e registro de eventos), então a refatoração foi necessária para que cada classe pudesse ser testada isolada com Mockito.
 
-## Refatorações realizadas
+## Princípio da Inversão de Dependência (SOLID)
 
-`Round` recebe `GeradorAleatorio` e `RegistroBatalha`, que controlam os resultados aleatórios dos golpes e registram os eventos da batalha. Isso permite substituir esses colaboradores por mocks nos testes. `Estacionamento` consulta `ServicoTerreno` para obter o multiplicador do terreno; `ServicoTerreno`, por sua vez, recebe um `Clock`, permitindo testar condições de dia e noite sem depender do horário real.
+O Princípio da Inversão de Dependência diz que as classes de alto nível (as regras de negócio) não devem depender de implementações concretas, e sim de abstrações. Por isso criamos interfaces para cada colaborador e passamos as implementações pelo construtor (injeção de dependências). Só a classe `BatalhaPokemon` (o `main`) cria os objetos concretos e liga as peças.
 
-`Torneio` recebe `RepositorioResultados`, `ServicoNotificacao` e `CalculadoraBonus` pelo construtor. Assim, salvar resultados, enviar conquistas e calcular bônus dependem de contratos explícitos. A falha ao salvar um resultado é tratada sem invalidar o vencedor. A lógica também distingue empate de vitória quando a batalha atinge o limite de turnos.
+## Classes refatoradas
 
-## Acoplamento e Inversão de Dependência
+- **`Round`**: recebe `Estacionamento`, `GeradorAleatorio` e `RegistroBatalha`. Todo sorteio (precisão e crítico) vem do gerador, e as regras de 6,25% de crítico e de acerto ficam no `Round`, não no gerador. O dano base (`calcularDano`) continua sem sorteios, para manter os testes da Fase 02. O turno agora segue a ordem exigida de eventos (ataque, dano, status, terreno e item), e a batalha tem limite de 50 turnos.
+- **`Estacionamento`**: deixou de guardar um terreno fixo e passou a consultar um `ServicoTerreno`. A implementação `ServicoTerrenoPadrao` recebe um `java.time.Clock` e o clima: chovendo vira poça de chuva, de dia vira asfalto quente e à noite vira canteiro central.
+- **`Torneio`**: passou a ter chave eliminatória de 4 ou 8 treinadores. Recebe `Round`, `RepositorioResultados`, `ServicoNotificacao` e `CalculadoraBonus`. Se o repositório falhar, o erro vai para o log e a batalha continua válida.
+- **`GeradorBots`**: recebe o `GeradorAleatorio` em vez de criar um `Random`, o que também resolveu o problema apontado pelo SonarQube na Fase 02.
+- **`Treinador`**: deixou de ter qualquer dependência de saída; o registro do uso de item passou para o `Round`.
 
-Antes da refatoração, regras que dependessem diretamente de implementações concretas — como aleatoriedade real, horário do sistema ou gravação de resultados — seriam difíceis de testar isoladamente. A dependência de detalhes de infraestrutura poderia tornar os testes imprevisíveis e obrigar a execução de serviços reais.
+## Novas interfaces e implementações
 
-Com a Inversão de Dependência, as classes de alto nível recebem colaboradores por construtor e trabalham com interfaces, como `GeradorAleatorio`, `RegistroBatalha`, `RepositorioResultados`, `ServicoNotificacao` e `CalculadoraBonus`. Os testes podem fornecer mocks dessas interfaces; a aplicação pode fornecer implementações reais. `ServicoTerreno` também recebe `Clock`, permitindo injetar um relógio fixo nos testes.
+`GeradorAleatorio` (`GeradorAleatorioReal`), `ServicoTerreno` (`ServicoTerrenoPadrao`), `RegistroBatalha` (`RegistroBatalhaConsole`), `RepositorioResultados` (`RepositorioResultadosMemoria`), `ServicoNotificacao` (`ServicoNotificacaoConsole`) e `CalculadoraBonus` (`CalculadoraBonusPadrao`).
 
-Essa organização facilita testar regras sem depender de banco de dados, notificações externas, horário corrente ou sorteios não determinísticos. As classes ficam menos presas às implementações específicas e mais fáceis de manter e estender.
+## Requisitos autorais da Fase 03
 
-## Observações
+1. **Conquista "vitória perfeita"** (colaborador: `ServicoNotificacao`): quando o jogador vence uma batalha sem usar nenhum item, ele recebe uma notificação de conquista.
+2. **Bônus de ataque por vitória** (colaborador: `CalculadoraBonus`): quando o jogador vence, ganha um bônus de ataque que é maior quanto mais rápida for a vitória (10 menos o número de turnos, nunca negativo).
 
-No modo de jogo, as implementações concretas de notificação e cálculo de bônus precisam ser fornecidas ao construtor de `Torneio`; se forem passados `null`, essas funções opcionais não são executadas. Além disso, a interface `CalculadoraBonus` retorna XP, enquanto a implementação atual aplica o valor ao ataque. A equipe deve confirmar se essa conversão corresponde ao requisito pretendido.
+## Diagramas
+
+Os diagramas estão nesta pasta: `ClasseFase3.png` (classes, com interfaces e implementações), `Sequencia1Fase3.png` (turno completo de batalha) e `Sequencia2Fase3.png` (registro do resultado no torneio). Os arquivos `.puml` são o código-fonte dos diagramas.

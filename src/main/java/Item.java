@@ -1,5 +1,5 @@
 public enum Item {
-        POTION,
-        SUPER_POTION,
-        ANTIDOTO;
+    POTION,
+    SUPER_POTION,
+    ANTIDOTO
 }

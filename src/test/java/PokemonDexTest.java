@@ -1,18 +1,30 @@
 import org.junit.jupiter.api.Test;
-
+import java.util.HashSet;
 import java.util.List;
-
+import java.util.Set;
 import static org.junit.jupiter.api.Assertions.*;
 
-class PokemonDexTest {
-    @Test
-    void retornaSeisPokemonComTiposENomesEsperados() {
-        List<Pokemon> pokemons = PokemonDex.getTodos();
+public class PokemonDexTest {
 
-        assertEquals(6, pokemons.size());
-        assertEquals(List.of("Bulbasal", "CharSal", "SquirtSal", "ChikoSal", "CyndaSal", "Totosal"),
-                pokemons.stream().map(Pokemon::getNome).toList());
-        assertTrue(pokemons.stream().allMatch(Pokemon::isVivo));
-        assertTrue(pokemons.stream().allMatch(p -> p.getStatus() == Status.NORMAL));
+    @Test
+    public void testPokedexTemSeisPokesalComGolpesValidos() {
+        List<Pokemon> todos = PokemonDex.getTodos();
+        Set<String> nomes = new HashSet<>();
+
+        for (Pokemon p : todos) {
+            nomes.add(p.getNome());
+            assertTrue(p.getGolpe().precisao() >= 0 && p.getGolpe().precisao() <= 100);
+        }
+        assertEquals(6, todos.size());
+        assertEquals(6, nomes.size());
+    }
+
+    @Test
+    public void testCadaChamadaCriaPokemonsNovos() {
+        // Os bots e os jogadores alteram seus Pokémon; não podem compartilhar objetos.
+        Pokemon primeiro = PokemonDex.getTodos().get(0);
+        Pokemon segundo = PokemonDex.getTodos().get(0);
+
+        assertNotSame(primeiro, segundo);
     }
 }

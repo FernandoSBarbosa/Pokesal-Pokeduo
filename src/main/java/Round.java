@@ -1,7 +1,13 @@
-import java.util.ArrayList;
-import java.util.List;
-
 public class Round {
+    private static final double FATOR_DANO = 8;
+    private static final double CHANCE_CRITICO = 0.0625;
+    private static final double MULTIPLICADOR_CRITICO = 1.5;
+    private static final int ESCALA_PRECISAO = 100;
+    private static final int DANO_STATUS = 5;
+    private static final int REDUCAO_STATUS = 5;
+    private static final int VALOR_MINIMO = 1;
+    private static final int LIMITE_TURNOS = 50;
+
     private final Estacionamento estacionamento;
     private final GeradorAleatorio gerador;
     private final RegistroBatalha registro;
@@ -12,106 +18,147 @@ public class Round {
         this.registro = registro;
     }
 
-    public Round(Estacionamento estacionamento) { this(estacionamento, null, null); }
-
+    /**
+     * Define quem ataca primeiro: o mais rápido. Em caso de empate, o primeiro informado.
+     *
+     * @param p1 primeiro Pokémon
+     * @param p2 segundo Pokémon
+     * @return Pokémon que ataca primeiro
+     */
     public Pokemon ordem(Pokemon p1, Pokemon p2) {
-        if (p1.getVel() > p2.getVel()) return p1;
-        if (p2.getVel() > p1.getVel()) return p2;
-        return gerador != null && gerador.proximoDouble() < 0.5 ? p1 : p2;
+        return p2.getVel() > p1.getVel() ? p2 : p1;
     }
 
-    public void aplicarStatus(Pokemon p) {
-        aplicarStatus(p, null);
+    /**
+     * Calcula o dano base (atributos, vantagem elemental e terreno), sem sorteios.
+     *
+     * @param atacante Pokémon que ataca
+     * @param defensor Pokémon que recebe o golpe
+     * @return dano calculado
+     */
+    public double calcularDano(Pokemon atacante, Pokemon defensor) {
+        double multElemental = atacante.getTipo().multiplicadorContra(defensor.getTipo());
+        double multTerreno = estacionamento.multiplicadorTerreno(atacante.getTipo());
+        return ((double) atacante.getAtk() / defensor.getDef())
+                * FATOR_DANO
+                * multElemental
+                * multTerreno;
     }
 
-    private void aplicarStatus(Pokemon p, List<Runnable> eventosAdiados) {
-        if (p == null || !p.isVivo() || p.getStatus() == Status.NORMAL) return;
-        switch (p.getStatus()) {
-            case QUEIMADO -> p.setHp(p.getHp() - 5);
-            case ENVENENADO -> p.setHp(p.getHp() - 5);
-            case PARALISADO -> { /* A velocidade é reduzida uma única vez ao aplicar o status. */ }
-            default -> { }
+    /**
+     * Executa um ataque: o golpe pode errar (dano zero) ou ser crítico (dano x1.5).
+     *
+     * @param atacante Pokémon que ataca
+     * @param defensor Pokémon que recebe o golpe
+     * @return dano causado
+     */
+    public double executarAtaque(Pokemon atacante, Pokemon defensor) {
+        registro.registrarAtaque(atacante.getNome(), defensor.getNome());
+        double dano = 0.0;
+        if (gerador.proximoInt(ESCALA_PRECISAO) < atacante.getGolpe().precisao()) {
+            dano = calcularDano(atacante, defensor);
+            if (gerador.proximoDouble() < CHANCE_CRITICO) {
+                dano *= MULTIPLICADOR_CRITICO;
+            }
         }
-        if (registro != null) {
-            Runnable evento = () -> registro.registrarEfeitoStatus(p.getNome(), p.getStatus());
-            if (eventosAdiados == null) evento.run();
-            else eventosAdiados.add(evento);
-        }
-    }
-
-    public double calcularDano(Pokemon atacante, Pokemon defensor, int precisao) {
-        if (atacante == null || defensor == null) throw new IllegalArgumentException("Pokémon atacante e defensor são obrigatórios.");
-        if (precisao < 0 || precisao > 100) throw new IllegalArgumentException("Precisão deve estar entre 0 e 100.");
-        if (registro != null) registro.registrarAtaque(atacante.getNome(), defensor.getNome());
-
-        boolean acertou = gerador == null || gerador.checarAcerto(precisao);
-        if (!acertou) {
-            if (registro != null) registro.registrarDano(defensor.getNome(), 0.0, false);
-            return 0.0;
-        }
-        if (defensor.getDef() == 0) {
-            if (registro != null) registro.registrarDano(defensor.getNome(), Double.POSITIVE_INFINITY, false);
-            return Double.POSITIVE_INFINITY;
-        }
-
-        double modVantagem = atacante.getTipo().multiplicadorContra(defensor.getTipo());
-        double modTerreno = estacionamento == null ? 1.0 : estacionamento.multiplicadorTerreno(atacante.getTipo());
-        boolean critico = gerador != null && gerador.checarCritico();
-        double dano = ((double) atacante.getAtk() / defensor.getDef()) * 10.0 * modVantagem * modTerreno * (critico ? 1.5 : 1.0);
-        if (registro != null) registro.registrarDano(defensor.getNome(), dano, critico);
+        defensor.setHp((int) (defensor.getHp() - dano));
+        registro.registrarDano(defensor.getNome(), dano);
         return dano;
     }
 
-    public double calcularDano(Pokemon atacante, Pokemon defensor) {
-        return calcularDano(atacante, defensor, atacante.getPrecisao());
+    /**
+     * Turno em que os dois treinadores só atacam.
+     *
+     * @param t1 primeiro treinador
+     * @param t2 segundo treinador
+     */
+    public void executarTurno(Treinador t1, Treinador t2) {
+        executarTurno(t1, null, t2, null);
     }
 
-    private void atacar(Pokemon atacante, Pokemon defensor) {
-        if (!atacante.isVivo() || !defensor.isVivo()) return;
-        double dano = calcularDano(atacante, defensor);
-        if (dano == Double.POSITIVE_INFINITY) defensor.setHp(0);
-        else defensor.setHp(defensor.getHp() - (int) dano);
-    }
+    /**
+     * Executa um turno completo. Quem usa item não ataca nesse turno. Os eventos são
+     * registrados na ordem: ataque, dano, status, terreno e item (itens valem no fim do turno).
+     *
+     * @param t1    primeiro treinador
+     * @param item1 item do primeiro treinador, ou null para atacar
+     * @param t2    segundo treinador
+     * @param item2 item do segundo treinador, ou null para atacar
+     */
+    public void executarTurno(Treinador t1, Item item1, Treinador t2, Item item2) {
+        Pokemon p1 = t1.getPokemon();
+        Pokemon p2 = t2.getPokemon();
 
-    public void simularRound(Pokemon p1, Pokemon p2) {
-        if (p1 == null || p2 == null) throw new IllegalArgumentException("Dois Pokémon são obrigatórios.");
-        List<Runnable> eventosAdiados = new ArrayList<>();
-        aplicarStatus(p1, eventosAdiados);
-        aplicarStatus(p2, eventosAdiados);
-
-        if (estacionamento != null) {
-            estacionamento.curaCanteiro(p1);
-            estacionamento.curaCanteiro(p2);
-            if (registro != null) {
-                TiposTerreno terreno = estacionamento.getTerrenoAtual();
-                eventosAdiados.add(() -> registro.registrarEfeitoTerreno(p1.getNome(), terreno));
-                eventosAdiados.add(() -> registro.registrarEfeitoTerreno(p2.getNome(), terreno));
-            }
+        if (ordem(p1, p2) == p1) {
+            atacar(item1 == null, p1, p2);
+            atacar(item2 == null, p2, p1);
+        } else {
+            atacar(item2 == null, p2, p1);
+            atacar(item1 == null, p1, p2);
         }
-        Pokemon primeiro = ordem(p1, p2);
-        Pokemon segundo = primeiro == p1 ? p2 : p1;
-        atacar(primeiro, segundo);
-        atacar(segundo, primeiro);
-        eventosAdiados.forEach(Runnable::run);
+
+        aplicarStatus(p1);
+        aplicarStatus(p2);
+        aplicarTerreno(p1);
+        aplicarTerreno(p2);
+        usarItem(t1, item1);
+        usarItem(t2, item2);
     }
 
-    public Pokemon executarBatalha(Pokemon p1, Pokemon p2) {
-        executarBatalhaComTurnos(p1, p2);
-        if (p1.isVivo() == p2.isVivo()) return null;
-        return p1.isVivo() ? p1 : p2;
-    }
-
-    public int executarBatalhaComTurnos(Treinador t1, Treinador t2) {
-        if (t1 == null || t2 == null) throw new IllegalArgumentException("Dois treinadores são obrigatórios.");
-        return executarBatalhaComTurnos(t1.getPokemon(), t2.getPokemon());
-    }
-
-    private int executarBatalhaComTurnos(Pokemon p1, Pokemon p2) {
+    /**
+     * Luta até um Pokémon cair ou até o limite de turnos.
+     *
+     * @param t1 primeiro treinador
+     * @param t2 segundo treinador
+     * @return quantidade de turnos disputados
+     */
+    public int executarBatalha(Treinador t1, Treinador t2) {
         int turnos = 0;
-        while (p1.isVivo() && p2.isVivo() && turnos < 50) {
-            simularRound(p1, p2);
+        while (t1.getPokemon().isVivo() && t2.getPokemon().isVivo() && turnos < LIMITE_TURNOS) {
+            executarTurno(t1, t2);
             turnos++;
         }
         return turnos;
+    }
+
+    /**
+     * Aplica o efeito do status no fim do turno: queimado perde HP e ATK, envenenado perde
+     * HP e paralisado perde VEL (atributos nunca ficam abaixo de 1).
+     *
+     * @param pokemon Pokémon afetado
+     */
+    public void aplicarStatus(Pokemon pokemon) {
+        if (!pokemon.isVivo() || pokemon.getStatus() == Status.NORMAL) {
+            return;
+        }
+        switch (pokemon.getStatus()) {
+            case QUEIMADO -> {
+                pokemon.setHp(pokemon.getHp() - DANO_STATUS);
+                pokemon.setAtk(Math.max(VALOR_MINIMO, pokemon.getAtk() - REDUCAO_STATUS));
+            }
+            case ENVENENADO -> pokemon.setHp(pokemon.getHp() - DANO_STATUS);
+            case PARALISADO -> pokemon.setVel(Math.max(VALOR_MINIMO, pokemon.getVel() - REDUCAO_STATUS));
+            default -> { }
+        }
+        registro.registrarEfeitoStatus(pokemon.getNome(), pokemon.getStatus());
+    }
+
+    private void atacar(boolean ataca, Pokemon atacante, Pokemon defensor) {
+        if (ataca && atacante.isVivo() && defensor.isVivo()) {
+            executarAtaque(atacante, defensor);
+        }
+    }
+
+    private void aplicarTerreno(Pokemon pokemon) {
+        if (pokemon.isVivo() && estacionamento.curaCanteiro(pokemon)) {
+            registro.registrarEfeitoTerreno(pokemon.getNome(), estacionamento.getTerrenoAtual());
+        }
+    }
+
+    private void usarItem(Treinador treinador, Item item) {
+        if (item != null && treinador.getPokemon().isVivo()) {
+            treinador.usarItem(item);
+            registro.registrarUsoItem(treinador.getNome(), item);
+        }
     }
 }

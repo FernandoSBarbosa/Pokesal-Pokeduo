@@ -1,41 +1,50 @@
 public class Treinador {
+    private static final int LIMITE_ITENS = 2;
+    private static final int CURA_POTION = 10;
+    private static final int CURA_SUPER_POTION = 20;
+
     private final String nome;
     private final Pokemon pokemon;
     private int itensUsados;
-    private RegistroBatalha registro;
 
     public Treinador(String nome, Pokemon pokemon) {
-        if (nome == null || nome.isBlank()) throw new IllegalArgumentException("Nome do treinador é obrigatório.");
-        if (pokemon == null) throw new IllegalArgumentException("Pokémon é obrigatório.");
         this.nome = nome;
         this.pokemon = pokemon;
+        this.itensUsados = 0;
     }
 
     public String getNome() { return nome; }
     public Pokemon getPokemon() { return pokemon; }
     public int getItensUsados() { return itensUsados; }
-    public void setRegistroBatalha(RegistroBatalha registro) { this.registro = registro; }
-    public boolean podeUsarItem() { return itensUsados < 2; }
 
+    public boolean podeUsarItem() {
+        return itensUsados < LIMITE_ITENS;
+    }
+
+    /**
+     * Usa um item no Pokémon do treinador (máximo de 2 por batalha).
+     *
+     * @param item item escolhido
+     * @throws IllegalStateException se o limite de itens foi atingido
+     *                               ou se o Pokémon já foi derrotado
+     */
     public void usarItem(Item item) {
-        if (item == null) throw new IllegalArgumentException("Item é obrigatório.");
-        if (!pokemon.isVivo()) throw new IllegalStateException("Pokémon derrotado não pode usar item.");
-        if (!podeUsarItem()) throw new IllegalStateException("Você excedeu o limite de uso de itens.");
+        if (!podeUsarItem()) {
+            throw new IllegalStateException("Você excedeu o limite de uso de itens");
+        }
+        if (!pokemon.isVivo()) {
+            throw new IllegalStateException("Pokémon derrotado não pode receber itens");
+        }
+
         switch (item) {
-            case POTION -> {
-                if (pokemon.getHp() >= pokemon.getMaxHP()) throw new IllegalStateException("O Pokémon já está com HP máximo.");
-                pokemon.setHp(pokemon.getHp() + 10);
-            }
-            case SUPER_POTION -> {
-                if (pokemon.getHp() >= pokemon.getMaxHP()) throw new IllegalStateException("O Pokémon já está com HP máximo.");
-                pokemon.setHp(pokemon.getHp() + 20);
-            }
+            case POTION -> pokemon.setHp(pokemon.getHp() + CURA_POTION);
+            case SUPER_POTION -> pokemon.setHp(pokemon.getHp() + CURA_SUPER_POTION);
             case ANTIDOTO -> {
-                if (pokemon.getStatus() != Status.ENVENENADO) throw new IllegalStateException("O Pokémon não está envenenado.");
-                pokemon.setStatus(Status.NORMAL);
+                if (pokemon.getStatus() == Status.ENVENENADO) {
+                    pokemon.setStatus(Status.NORMAL);
+                }
             }
         }
         itensUsados++;
-        if (registro != null) registro.registrarUsoItem(nome, item);
     }
 }

@@ -1,80 +1,80 @@
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
 
+/**
+ * Testes da Fase 02 (regras de dano, terreno, velocidade e valores limite).
+ * Aqui o Estacionamento é real; o gerador e o registro são mocks sem comportamento,
+ * porque calcularDano() não sorteia nem registra nada.
+ */
 public class RoundTest {
+
+    private Estacionamento criarEstacionamento(TiposTerreno terreno) {
+        return new Estacionamento(() -> terreno);
+    }
+
+    private Round criarRound(TiposTerreno terreno) {
+        return new Round(criarEstacionamento(terreno), mock(GeradorAleatorio.class), mock(RegistroBatalha.class));
+    }
+
     @Test
     public void testVantagemElemental() {
-        Estacionamento estacionamento = new Estacionamento(TiposTerreno.NORMAL, new ServicoTerreno(java.time.Clock.systemUTC()));
-        Round round = new Round(estacionamento);
+        Round round = criarRound(TiposTerreno.NORMAL);
 
-        Pokemon p1 = new Pokemon("CharSal", 50, 40, Tipos.FOGO, 65, 39, Status.NORMAL);
-        Pokemon p2 = new Pokemon("Bulbasal", 33, 50, Tipos.PLANTA, 45, 45, Status.NORMAL);
-        Pokemon p3 = new Pokemon("SquirtSal", 48, 50, Tipos.AGUA, 43, 44, Status.NORMAL);
-
-        double danoFogoPlanta = round.calcularDano(p1, p2);
-        assertEquals(20.0, danoFogoPlanta, 0.01);
-
-        double danoFogoAgua = round.calcularDano(p1, p3);
-        assertEquals(5.0, danoFogoAgua, 0.01);
-
+        Pokemon fogo = new Pokemon("CharSal", 50, 40, Tipos.FOGO, 65, 39, Status.NORMAL);
+        Pokemon agua = new Pokemon("SquirtSal", 48, 50, Tipos.AGUA, 43, 44, Status.NORMAL);
+        Pokemon planta = new Pokemon("Bulbasal", 33, 50, Tipos.PLANTA, 45, 45, Status.NORMAL);
         Pokemon aguaAtacante = new Pokemon("Totosal", 50, 40, Tipos.AGUA, 43, 50, Status.NORMAL);
         Pokemon fogoDefensor = new Pokemon("CyndaSal", 30, 50, Tipos.FOGO, 65, 39, Status.NORMAL);
-
-        double danoAguaFogo = round.calcularDano(aguaAtacante, fogoDefensor);
-        assertEquals(20.0, danoAguaFogo, 0.01);
-
-        double danoAguaPlanta = round.calcularDano(aguaAtacante, p2);
-        assertEquals(5.0, danoAguaPlanta, 0.01);
-
         Pokemon plantaAtacante = new Pokemon("ChikoSal", 50, 65, Tipos.PLANTA, 45, 45, Status.NORMAL);
 
-        double danoPlantaAgua = round.calcularDano(plantaAtacante, p3);
-        assertEquals(20.0, danoPlantaAgua, 0.01);
-
-        double danoPlantaFogo = round.calcularDano(plantaAtacante, fogoDefensor);
-        assertEquals(5.0, danoPlantaFogo, 0.01);
+        // atk 50 / def 50 = 1.0; dano = 1.0 * 8 * multiplicador elemental
+        assertEquals(16.0, round.calcularDano(fogo, planta), 0.01);          // fogo -> planta x2.0
+        assertEquals(4.0, round.calcularDano(fogo, agua), 0.01);             // fogo -> água x0.5
+        assertEquals(16.0, round.calcularDano(aguaAtacante, fogoDefensor), 0.01); // água -> fogo x2.0
+        assertEquals(4.0, round.calcularDano(aguaAtacante, planta), 0.01);   // água -> planta x0.5
+        assertEquals(16.0, round.calcularDano(plantaAtacante, agua), 0.01);  // planta -> água x2.0
+        assertEquals(4.0, round.calcularDano(plantaAtacante, fogoDefensor), 0.01); // planta -> fogo x0.5
     }
+
     @Test
     public void testEfeitoTerrenoEstacionamentoUCSal() {
-        java.time.Clock clockDia = java.time.Clock.fixed(
-                java.time.Instant.parse("2026-11-07T12:00:00Z"), java.time.ZoneId.of("UTC"));
-        Estacionamento estacionamentoDia = new Estacionamento(TiposTerreno.DIA, new ServicoTerreno(clockDia));
-        double multiplicadorFogo = estacionamentoDia.multiplicadorTerreno(Tipos.FOGO);
-        assertEquals(1.15, multiplicadorFogo, 0.01);
+        Estacionamento dia = criarEstacionamento(TiposTerreno.DIA);
+        assertEquals(1.15, dia.multiplicadorTerreno(Tipos.FOGO), 0.01);
+        assertEquals(1.0, dia.multiplicadorTerreno(Tipos.AGUA), 0.01);
 
-        Estacionamento estacionamentoChuva = new Estacionamento(TiposTerreno.CHUVA, new ServicoTerreno(java.time.Clock.systemUTC()));
-        double multiplicadorAgua = estacionamentoChuva.multiplicadorTerreno(Tipos.AGUA);
-        assertEquals(1.10, multiplicadorAgua, 0.01);
+        Estacionamento chuva = criarEstacionamento(TiposTerreno.CHUVA);
+        assertEquals(1.10, chuva.multiplicadorTerreno(Tipos.AGUA), 0.01);
+        assertEquals(1.0, chuva.multiplicadorTerreno(Tipos.FOGO), 0.01);
 
-        Estacionamento estacionamentoCanteiro = new Estacionamento(TiposTerreno.CANTEIRO, new ServicoTerreno(java.time.Clock.systemUTC()));
-        Pokemon pokemonPlanta = new Pokemon("Bulbasal", 49, 49, Tipos.PLANTA, 45, 100, Status.NORMAL);
-        pokemonPlanta.setHp(50);
-        estacionamentoCanteiro.curaCanteiro(pokemonPlanta);
-        assertEquals(55, pokemonPlanta.getHp());
+        Estacionamento canteiro = criarEstacionamento(TiposTerreno.CANTEIRO);
+        Pokemon planta = new Pokemon("Bulbasal", 49, 49, Tipos.PLANTA, 45, 100, Status.NORMAL);
+        planta.setHp(50);
+        assertTrue(canteiro.curaCanteiro(planta));
+        assertEquals(55, planta.getHp()); // 5% de 100
     }
+
     @Test
-    public void testOrdemDeAtaquePorVelocidade(){
-        Pokemon p1 = new Pokemon("CharSal", 50, 40, Tipos.FOGO, 65, 39, Status.NORMAL);
-        Pokemon p2 = new Pokemon("Bulbasal", 33, 50, Tipos.PLANTA, 45, 45, Status.NORMAL);
-        Estacionamento estacionamento = new Estacionamento(TiposTerreno.NORMAL, new ServicoTerreno(java.time.Clock.systemUTC()));
-        Round round = new Round(estacionamento);
-        Pokemon pokemonRapido = round.ordem(p1, p2);
-        assertSame(p1, pokemonRapido);
+    public void testOrdemDeAtaquePorVelocidade() {
+        Round round = criarRound(TiposTerreno.NORMAL);
+        Pokemon rapido = new Pokemon("CharSal", 50, 40, Tipos.FOGO, 65, 39, Status.NORMAL);
+        Pokemon lento = new Pokemon("Bulbasal", 33, 50, Tipos.PLANTA, 45, 45, Status.NORMAL);
+        Pokemon empatado = new Pokemon("Outro", 10, 10, Tipos.AGUA, 65, 10, Status.NORMAL);
+
+        assertSame(rapido, round.ordem(rapido, lento));
+        assertSame(rapido, round.ordem(lento, rapido));
+        assertSame(rapido, round.ordem(rapido, empatado)); // empate: o primeiro informado
     }
+
     @Test
-    public void testCalculoDanoBoundaryValues(){
-        Round round = new Round(new Estacionamento(TiposTerreno.NORMAL, new ServicoTerreno(java.time.Clock.systemUTC())));
+    public void testCalculoDanoBoundaryValues() {
+        Round round = criarRound(TiposTerreno.NORMAL);
+        Pokemon atacante = new Pokemon("CharSal", 50, 40, Tipos.FOGO, 65, 39, Status.NORMAL);
+        Pokemon defesaZero = new Pokemon("Bulbasal", 33, 0, Tipos.PLANTA, 45, 45, Status.NORMAL);
+        Pokemon ataqueZero = new Pokemon("SquirtSal", 0, 50, Tipos.AGUA, 43, 44, Status.NORMAL);
+        Pokemon alvo = new Pokemon("Totosal", 50, 40, Tipos.AGUA, 43, 50, Status.NORMAL);
 
-        Pokemon p1 = new Pokemon("CharSal", 50, 40, Tipos.FOGO, 65, 39, Status.NORMAL);
-        Pokemon p2 = new Pokemon("Bulbasal", 33, 0, Tipos.PLANTA, 45, 45, Status.NORMAL);
-        double resultadoDefZero = round.calcularDano(p1, p2);
-        assertEquals(Double.POSITIVE_INFINITY, resultadoDefZero, 0.01);
-
-        Pokemon p3 = new Pokemon("SquirtSal", 0, 50, Tipos.AGUA, 43, 44, Status.NORMAL);
-        Pokemon p4 = new Pokemon("Totosal", 50, 40, Tipos.AGUA, 43, 50, Status.NORMAL);
-        double resultadoAtkZero = round.calcularDano(p3, p4);
-        assertEquals(0.0, resultadoAtkZero, 0.01);
+        assertEquals(Double.POSITIVE_INFINITY, round.calcularDano(atacante, defesaZero), 0.01);
+        assertEquals(0.0, round.calcularDano(ataqueZero, alvo), 0.01);
     }
 }
-
-

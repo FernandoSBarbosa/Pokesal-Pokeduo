@@ -2,5 +2,5 @@ public enum Status {
     NORMAL,
     QUEIMADO,
     ENVENENADO,
-    PARALISADO;
+    PARALISADO
 }
