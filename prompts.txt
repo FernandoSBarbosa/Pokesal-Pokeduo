@@ -2,3 +2,6 @@ Corrija os erros ortograficos desse readme e diga coisas interessantes para pôr
 Possui algum erro sintatico nesse codigo?
 Me diga como funciona o dano no jogo pokemon.
 Como eu faço comparação entre Objetos no assert
+Como posso aumentar as porcentages do JaCoCo
+Como melhorar esse readme
+É válido não mockar algumas classes para melhorar os testes?
