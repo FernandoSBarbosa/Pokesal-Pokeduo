@@ -24,7 +24,3 @@ O Princípio da Inversão de Dependência diz que as classes de alto nível (as 
 
 1. **Conquista "vitória perfeita"** (colaborador: `ServicoNotificacao`): quando o jogador vence uma batalha sem usar nenhum item, ele recebe uma notificação de conquista.
 2. **Bônus de ataque por vitória** (colaborador: `CalculadoraBonus`): quando o jogador vence, ganha um bônus de ataque que é maior quanto mais rápida for a vitória (10 menos o número de turnos, nunca negativo).
-
-## Diagramas
-
-Os diagramas estão nesta pasta: `ClasseFase3.png` (classes, com interfaces e implementações), `Sequencia1Fase3.png` (turno completo de batalha) e `Sequencia2Fase3.png` (registro do resultado no torneio). Os arquivos `.puml` são o código-fonte dos diagramas.
